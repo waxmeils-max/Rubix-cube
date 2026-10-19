@@ -131,6 +131,7 @@
       state.sol = null;
       flash('Du hast selbst gedreht – die alte Lösung passt nicht mehr. Drücke „Lösung erklären“ für eine neue.');
     }
+    flash(`${token}: ${moveText(token)}`);
     state.busy = true;
     await doMove(token);
     state.busy = false;
@@ -329,7 +330,7 @@
   }
 
   function chips(moves, doneUpTo, extraClass = '') {
-    return moves.map((t, i) => `<span class="chip ${extraClass}${i < doneUpTo ? ' done' : ''}${i === doneUpTo ? ' next' : ''}" title="${moveText(t)}">${t}</span>`).join('');
+    return moves.map((t, i) => `<button type="button" class="chip ${extraClass}${i < doneUpTo ? ' done' : ''}${i === doneUpTo ? ' next' : ''}" data-m="${t}" data-i="${i}" title="${moveText(t)} – antippen für Erklärung">${t}</button>`).join('');
   }
 
   function updateSolverUI(soft) {
@@ -360,12 +361,14 @@
     $('#phases').innerHTML = phaseList(step.phase);
     const nextTok = step.moves[done];
     const algInfo = step.repeat ? `<div class="alg-line">Algorithmus: <code>${step.alg}</code> × ${step.repeat}</div>` : step.alg ? `<div class="alg-line">Algorithmus: <code>${step.alg}</code></div>` : '';
+    card.dataset.si = si;
     card.innerHTML = `
       <div class="step-head"><span class="phase-tag">${ph.title}</span><span class="muted">Schritt ${si + 1} / ${s.steps.length} · Zug ${state.pos} / ${total}</span></div>
       <h3>${step.title}</h3>
       <p class="step-text">${step.text}</p>
       ${algInfo}
       <div class="chips">${chips(step.moves, done)}</div>
+      <div class="chip-hint muted">Tipp: Tippe einen Zug an, um zu sehen, was er bedeutet.</div>
       <div class="move-explain">${nextTok ? `<b>Nächster Zug: <span class="tok">${nextTok}</span></b> – ${moveText(nextTok)}` : ''}</div>
       ${step.note ? `<div class="note">${step.note}</div>` : ''}
       <div class="progress"><div style="width:${(100 * state.pos) / total}%"></div></div>`;
@@ -503,6 +506,7 @@
     box.hidden = false;
     if (!h) { box.innerHTML = 'Hier gibt es nichts mehr zu tun – Ziel erreicht!'; return; }
     const { step, warn } = h;
+    state.hint = { cube: view.cube.clone(), moves: step.moves };
     box.innerHTML = `${warn}<h4>${step.title}</h4><p>${step.text}</p><div class="chips">${chips(step.moves, -1)}</div>`;
     view.setFocus(step.focus);
   });
@@ -622,6 +626,7 @@
     }
     const moves = CubeLib.parseSeq(demo);
     const chipBox = $('.mini-chips', el);
+    el._moveCtx = { start: startCube, moves };
     chipBox.innerHTML = chips(moves, -1, 'sm');
     let running = false;
     let token = 0;
@@ -670,6 +675,90 @@
       });
     });
   }
+
+  /* ---------- Zug-Erklärung beim Antippen eines Zugs ---------- */
+  const sheet = document.createElement('div');
+  sheet.id = 'moveSheet';
+  sheet.hidden = true;
+  sheet.innerHTML = `
+    <div class="ms-card" role="dialog" aria-modal="true" aria-labelledby="msTok">
+      <button type="button" class="ms-close" id="msClose" aria-label="Schließen">×</button>
+      <div class="ms-mini"></div>
+      <div class="ms-body">
+        <div class="ms-tok" id="msTok"></div>
+        <p class="ms-text" id="msText"></p>
+        <p class="ms-ctx" id="msCtx"></p>
+        <div class="btn-row">
+          <button type="button" class="small" id="msReplay">↻ Nochmal zeigen</button>
+          <button type="button" class="small primary" id="msDo" hidden>Jetzt ausführen</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(sheet);
+  const sheetView = new CubeView($('.ms-mini', sheet), { size: 30 });
+  let sheetLoop = 0;
+  let sheetCtx = null;
+
+  async function loopDemo() {
+    const my = ++sheetLoop;
+    while (my === sheetLoop && !sheet.hidden) {
+      sheetView.setCube(sheetCtx.base.clone());
+      await sleep(500);
+      if (my !== sheetLoop || sheet.hidden) break;
+      await sheetView.animate(sheetCtx.token, 750);
+      await sleep(1100);
+    }
+  }
+
+  function openMoveSheet(ctx) {
+    sheetCtx = ctx;
+    $('#msTok').textContent = ctx.token;
+    $('#msText').textContent = moveText(ctx.token);
+    $('#msCtx').textContent = ctx.info || '';
+    $('#msDo').hidden = !ctx.canDo;
+    sheet.hidden = false;
+    $('#msClose').focus();
+    loopDemo();
+  }
+  function closeMoveSheet() {
+    sheet.hidden = true;
+    sheetLoop++;
+  }
+  $('#msClose').addEventListener('click', closeMoveSheet);
+  sheet.addEventListener('click', (e) => { if (e.target === sheet) closeMoveSheet(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) closeMoveSheet(); }, true);
+  $('#msReplay').addEventListener('click', () => loopDemo());
+  $('#msDo').addEventListener('click', () => {
+    closeMoveSheet();
+    stopPlay();
+    stepMove(1);
+  });
+
+  document.addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip[data-m]');
+    if (!chip) return;
+    const token = chip.dataset.m;
+    const i = Number(chip.dataset.i);
+    const card = chip.closest('#stepCard');
+    const caseEl = chip.closest('.case');
+    const ctx = { token, base: new Cube(), info: '', canDo: false };
+    if (card && state.sol) {
+      const si = Number(card.dataset.si);
+      const [a] = stepBounds(si);
+      const n = state.sol.steps[si].moves.length;
+      ctx.base = state.sol.start.clone().apply(state.sol.flat.slice(0, a + i).map((m) => m.token));
+      const p = a + i;
+      ctx.info = `Zug ${i + 1} von ${n} in diesem Schritt` + (p < state.pos ? ' – schon erledigt.' : p === state.pos ? ' – das ist der nächste Zug.' : '.');
+      ctx.canDo = p === state.pos && !state.busy;
+    } else if (chip.closest('#hintBox') && state.hint) {
+      ctx.base = state.hint.cube.clone().apply(state.hint.moves.slice(0, i));
+      ctx.info = `Zug ${i + 1} von ${state.hint.moves.length} in diesem Tipp.`;
+    } else if (caseEl && caseEl._moveCtx) {
+      ctx.base = caseEl._moveCtx.start().apply(caseEl._moveCtx.moves.slice(0, i));
+      ctx.info = `Zug ${i + 1} von ${caseEl._moveCtx.moves.length} in diesem Beispiel.`;
+    }
+    openMoveSheet(ctx);
+  });
 
   /* ---------- Start ---------- */
   setView('3d');

@@ -11,6 +11,7 @@
   --ok: #1f9d55;
   --warn-bg: #fff4d6;
   --err: #c8102e;
+  --overlay: rgba(20, 25, 40, .35);
   --chip: #eef1f7;
   --radius: 14px;
   --shadow: 0 1px 2px rgba(20, 25, 40, .06), 0 4px 16px rgba(20, 25, 40, .06);
@@ -37,6 +38,7 @@
     --c-X: #4a4f5c;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .25);
     --err: #ff8a9b;
+    --overlay: rgba(0, 0, 0, .55);
     color-scheme: dark;
   }
 }
@@ -52,6 +54,7 @@
   --c-X: #4a4f5c;
   --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .25);
   --err: #ff8a9b;
+  --overlay: rgba(0, 0, 0, .55);
   color-scheme: dark;
 }
 
@@ -228,9 +231,13 @@ button.icon { min-width: 46px; padding: 8px 10px; font-size: 1rem; }
   font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700;
   padding: 4px 10px; border-radius: 8px; background: var(--chip); min-width: 34px; text-align: center;
 }
+.chip { border: 0; color: inherit; font-size: 1rem; line-height: 1.4; cursor: pointer; }
+.chip:hover { outline: 2px solid var(--primary); outline-offset: 1px; }
+.chip:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 .chip.done { opacity: .4; }
 .chip.next { background: var(--accent); color: var(--accent-ink); }
 .chip.sm { padding: 1px 6px; min-width: 0; font-size: .8rem; }
+.chip-hint { font-size: .8rem; margin: -4px 0 8px; }
 .move-explain { min-height: 1.5em; font-size: .95rem; }
 .move-explain .tok { background: var(--accent); color: var(--accent-ink); padding: 0 6px; border-radius: 6px; }
 .note { margin-top: 8px; font-size: .88rem; color: var(--ok); font-weight: 600; }
@@ -317,3 +324,31 @@ table.trouble { width: 100%; border-collapse: collapse; font-size: .92rem; }
   .top { padding-block: 8px; }
   .card { padding: 12px; }
 }
+
+/* Zug-Erklärung (Bottom-Sheet) */
+#moveSheet {
+  position: fixed; inset: 0; z-index: 60; background: var(--overlay);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.ms-card {
+  position: relative; width: min(480px, 100%); background: var(--card); color: var(--text);
+  border-radius: 18px 18px 0 0; box-shadow: var(--shadow);
+  display: flex; gap: 14px; align-items: center;
+  padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  animation: sheetIn .18s ease-out;
+}
+@media (min-width: 700px) {
+  #moveSheet { align-items: center; }
+  .ms-card { border-radius: 18px; }
+}
+@keyframes sheetIn { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ms-card { animation: none; } }
+.ms-mini { flex: none; }
+.ms-mini.cv-scene { width: 150px; height: 150px; }
+.ms-body { min-width: 0; flex: 1; }
+.ms-tok { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 2rem; font-weight: 800; line-height: 1; }
+.ms-text { margin: 8px 0 4px; font-weight: 600; }
+.ms-ctx { margin: 0 0 10px; font-size: .88rem; color: var(--muted); }
+.ms-close { position: absolute; top: 8px; right: max(8px, env(safe-area-inset-right, 0px)); border: 0; background: transparent; font-size: 1.5rem; line-height: 1; padding: 4px 10px; color: var(--muted); }
+@media (max-width: 400px) { .ms-card { flex-direction: column; text-align: center; } .ms-card .btn-row { justify-content: center; } }
