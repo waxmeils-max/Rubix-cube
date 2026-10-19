@@ -125,7 +125,8 @@
           <li><b>Winkel</b> (L-Form): so drehen, dass er <b>hinten links</b> liegt, Algorithmus → Linie.</li>
           <li><b>Linie</b>: <b>waagerecht</b> legen, Algorithmus → Kreuz.</li>
           <li><b>Kreuz</b>: fertig!</li>
-        </ul>`,
+        </ul>
+        <p class="tip"><b>Du siehst genau drei gelbe Kanten oben (T-Form) oder eine Kante ohne Gelb oben?</b> Dann ist die zweite Ebene noch nicht fertig: Eine Mittelkante liegt noch oben, und dafür steckt eine gelbe Kante unten in der mittleren Ebene. Setze zuerst die Kante ohne Gelb wie in Schritt 4 ein. Danach siehst du Punkt, Winkel, Linie oder Kreuz.</p>`,
       cases: [
         { title: 'Punkt', text: 'Kein Kantenstein oben ist gelb. Algorithmus aus beliebiger Richtung, dann weiter wie beim Winkel.', base: 'solved', setup: `${inv(ALG.ycross + ' ' + ALG.ycross)} U2 ${inv(ALG.ycross)}`, mask: 'ytop', demo: 'auto', view: 'top' },
         { title: 'Winkel (hinten links)', text: 'Der Winkel zeigt nach hinten links: F R U R\' U\' F\' macht eine Linie daraus, nochmal → Kreuz.', base: 'solved', setup: inv(ALG.ycross + ' ' + ALG.ycross), mask: 'ytop', demo: 'auto', view: 'top' },
@@ -199,6 +200,7 @@
             <tr><td>Zweite Ebene: Keine Kante ohne Gelb ist oben</td><td>Eine Kante steckt falsch in der Mitte. Vorne rechts halten, Rechts-Algorithmus <code>U R U' R' U' F' U F</code> → sie kommt nach oben.</td></tr>
             <tr><td>Zweite Ebene: Kante ist am richtigen Platz, aber verdreht</td><td>Genau so: mit dem Rechts-Algorithmus herausholen, dann neu einsetzen.</td></tr>
             <tr><td>Gelbes Kreuz: Ich bekomme immer nur Linie/Winkel</td><td>Achte auf die Lage: Winkel <b>hinten links</b>, Linie <b>waagerecht</b>. Die Ecken sind dabei egal.</td></tr>
+            <tr><td>Gelbes Kreuz: Oben zeigen genau drei gelbe Kanten nach oben</td><td>Das geht nur, wenn die zweite Ebene noch nicht fertig ist. Die Kante oben ohne Gelb gehört in die mittlere Ebene: mit dem Rechts- oder Links-Algorithmus einsetzen. Sieht die zweite Ebene wirklich komplett aus, ist eine Kante falsch herum eingebaut.</td></tr>
             <tr><td>Gelbe Kanten: Es passen nie zwei nebeneinander</td><td>Wenn zwei gegenüber passen: einmal <code>R U R' U R U2 R' U</code> von irgendeiner Seite, dann nochmal suchen.</td></tr>
             <tr><td>Gelbe Ecken drehen: Alles unten ist kaputt!</td><td>Normal! Würfel nicht drehen, nur <code>U</code> zwischen den Ecken. Nach der letzten Ecke ist alles wieder heil.</td></tr>
             <tr><td>Am Ende ist genau eine Ecke verdreht oder eine Kante gekippt</td><td>Das geht mit legalen Zügen nicht – der Würfel wurde einmal falsch zusammengebaut (oder ein Sticker umgeklebt). Stein herausnehmen und richtig einsetzen.</td></tr>
