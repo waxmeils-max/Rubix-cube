@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Würfel-Coach – Zauberwürfel lösen lernen</title>
+  <meta name="description" content="Zauberwürfel Schritt für Schritt lösen lernen: Gänseblümchen, weißes Kreuz, erste Ebene, zweite Ebene und gelbe Seite – mit Löser, Trainer und Erklärungen.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo" aria-hidden="true"></span> Würfel-Coach</div>
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="workspace" role="tab">Lösen &amp; Üben</button>
+      <button class="tab-btn" data-tab="guide" role="tab">Anleitung</button>
+      <button class="tab-btn" data-tab="notation" role="tab">Notation</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Arbeitsbereich -->
+    <section id="tab-workspace" class="tab active">
+      <div class="ws">
+        <div class="ws-left">
+          <div class="seg" id="modeSwitch">
+            <button data-mode="solver" class="active">Erklär-Löser</button>
+            <button data-mode="trainer">Trainer</button>
+            <button data-mode="input">Würfel eingeben</button>
+          </div>
+
+          <div class="view-wrap card">
+            <div class="view-tools">
+              <div class="seg small" id="viewSwitch">
+                <button data-view="3d" class="active">3D</button>
+                <button data-view="2d">Netz</button>
+              </div>
+              <button class="ghost small" id="resetView" title="Ansicht zurücksetzen">Ansicht ↺</button>
+            </div>
+            <div id="cube3d"></div>
+            <div id="net" class="net" hidden></div>
+            <p class="hint drag-hint">Ziehen zum Drehen der Ansicht · Gelb oben, Vorderseite zeigt zu dir</p>
+          </div>
+
+          <div class="player card" id="player" hidden>
+            <div class="player-row">
+              <button class="icon" id="pFirst" title="Zum Anfang">⏮</button>
+              <button class="icon" id="pStepBack" title="Schritt zurück">⏪</button>
+              <button class="icon" id="pBack" title="Zug zurück (←)">◀</button>
+              <button class="icon primary" id="pPlay" title="Abspielen / Pause (Leertaste)">▶</button>
+              <button class="icon" id="pFwd" title="Nächster Zug (→)">▶|</button>
+              <button class="icon" id="pStepFwd" title="Ganzen Schritt ausführen">⏩</button>
+              <button class="icon" id="pLast" title="Zum Ende">⏭</button>
+            </div>
+            <div class="player-row opts">
+              <label>Tempo <input type="range" id="speed" min="0" max="4" value="2"></label>
+              <label class="check"><input type="checkbox" id="pauseStep" checked> nach jedem Schritt anhalten</label>
+            </div>
+          </div>
+
+          <div class="pad card" id="pad">
+            <div class="pad-title">Selbst drehen <span class="hint">(Tastatur: U D R L F B, mit Shift = gegen den Uhrzeigersinn, Y = ganzer Würfel)</span></div>
+            <div class="pad-grid" id="padGrid"></div>
+          </div>
+        </div>
+
+        <div class="ws-right">
+          <!-- Löser -->
+          <div id="panel-solver" class="panel">
+            <div class="card">
+              <div class="btn-row">
+                <button class="primary" id="btnScramble">🔀 Mischen</button>
+                <button class="accent" id="btnSolve">💡 Lösung erklären</button>
+                <button id="btnReset">↺ Gelöst</button>
+              </div>
+              <p class="scramble" id="scrambleText">Mische den Würfel oder gib deinen eigenen ein. Dann zeigt dir der Löser jeden Schritt mit Erklärung.</p>
+            </div>
+            <div class="card phases-card">
+              <ol class="phases" id="phases"></ol>
+            </div>
+            <div class="card step-card" id="stepCard">
+              <div class="empty">
+                <h3>So funktioniert’s</h3>
+                <ol>
+                  <li><b>Mischen</b> drücken (oder unter „Würfel eingeben“ deinen echten Würfel abmalen).</li>
+                  <li><b>Lösung erklären</b> drücken.</li>
+                  <li>Mit <b>▶|</b> Zug für Zug mitdrehen. Der Stein, um den es gerade geht, leuchtet.</li>
+                </ol>
+              </div>
+            </div>
+            <details class="card" id="stepListWrap">
+              <summary>Alle Schritte anzeigen</summary>
+              <div id="stepList" class="step-list"></div>
+            </details>
+          </div>
+
+          <!-- Trainer -->
+          <div id="panel-trainer" class="panel" hidden>
+            <div class="card">
+              <h3>Trainer</h3>
+              <p class="muted">Wähle einen Schritt. Du bekommst einen Würfel, bei dem alles davor schon fertig ist – den Schritt machst du selbst mit den Dreh-Knöpfen oder der Tastatur.</p>
+              <div class="btn-row">
+                <select id="trainerPhase"></select>
+                <button class="primary" id="btnTrainNew">Neue Aufgabe</button>
+              </div>
+            </div>
+            <div class="card" id="trainerGoal"></div>
+            <div class="card">
+              <div class="status" id="trainerStatus">Noch keine Aufgabe.</div>
+              <div class="btn-row">
+                <button class="accent" id="btnHint">💡 Tipp</button>
+                <button id="btnHintDo">▶ Tipp ausführen</button>
+                <button id="btnUndo">↶ Zug zurück</button>
+                <button id="btnTrainRestart">Neu starten</button>
+              </div>
+              <div id="hintBox" class="hint-box" hidden></div>
+            </div>
+          </div>
+
+          <!-- Eingabe -->
+          <div id="panel-input" class="panel" hidden>
+            <div class="card">
+              <h3>Deinen Würfel eingeben</h3>
+              <ol class="small-list">
+                <li>Halte deinen Würfel mit <b>Gelb oben</b> und <b>Grün vorne</b>. Dann ist Orange rechts, Rot links, Blau hinten und Weiß unten.</li>
+                <li>Wähle eine Farbe und klicke die Felder im Netz an. Die Mitten sind fest.</li>
+                <li><b>Oben (gelb):</b> die obere Reihe im Netz ist die Reihe an der blauen Seite. <b>Unten (weiß):</b> kippe den Würfel zu dir hin – die obere Reihe im Netz ist die an der grünen Seite.</li>
+                <li><b>Seiten:</b> Schau direkt auf die Seite, Gelb bleibt dabei oben.</li>
+              </ol>
+              <div class="palette" id="palette"></div>
+              <div class="btn-row">
+                <button id="btnClear">Alles leeren</button>
+                <button id="btnTakeCurrent">Aktuellen Würfel übernehmen</button>
+                <button class="accent" id="btnInputSolve">✔ Prüfen &amp; lösen</button>
+              </div>
+              <div id="inputMsg" class="msg" hidden></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Anleitung -->
+    <section id="tab-guide" class="tab">
+      <div class="guide">
+        <aside class="toc card" id="toc"></aside>
+        <div id="lessons"></div>
+      </div>
+    </section>
+
+    <!-- Notation -->
+    <section id="tab-notation" class="tab">
+      <div class="card notation-intro">
+        <h2>Die Zug-Sprache</h2>
+        <p>Jeder Buchstabe ist eine Seite: <b>R</b>echts, <b>L</b>inks, <b>U</b> = oben (up), <b>D</b> = unten (down), <b>F</b> = vorne (front), <b>B</b> = hinten (back).</p>
+        <ul>
+          <li>Buchstabe allein = <b>Vierteldrehung im Uhrzeigersinn</b>, wenn du direkt auf diese Seite schaust.</li>
+          <li>Mit Strich (<b>R'</b>, „R Strich“) = gegen den Uhrzeigersinn.</li>
+          <li>Mit 2 (<b>R2</b>) = halbe Drehung (zweimal).</li>
+          <li><b>y</b> = den ganzen Würfel in der Hand drehen (wie U). Dabei bleibt Gelb oben.</li>
+        </ul>
+        <p class="muted">Klicke auf einen Würfel, um den Zug zu sehen.</p>
+      </div>
+      <div class="notation-grid" id="notationGrid"></div>
+    </section>
+  </main>
+
+  <footer class="foot">Würfel-Coach · Anfängermethode (Schicht für Schicht) · funktioniert komplett offline</footer>
+
+  <script src="js/cube.js"></script>
+  <script src="js/solver.js"></script>
+  <script src="js/view3d.js"></script>
+  <script src="js/lessons.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
