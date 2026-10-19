@@ -85,10 +85,11 @@
         </ol>
         <p><b>R U R' U'</b> ist der wichtigste Zug-Ablauf überhaupt – rechts hoch, oben nach links, rechts runter, oben zurück.</p>`,
       cases: [
-        { title: 'Weiß zeigt nach rechts → 1×', text: 'Einmal R U R\' U\' und die Ecke sitzt.', base: 'solved', setup: inv(ALG.sexy), mask: 'corners', demo: ALG.sexy },
-        { title: 'Weiß zeigt nach oben → 3×', text: 'Die Ecke liegt „auf dem Rücken“. Dreimal R U R\' U\'.', base: 'solved', setup: inv(rep(ALG.sexy, 3)), mask: 'corners', demo: rep(ALG.sexy, 3) },
-        { title: 'Weiß zeigt nach vorne → 5×', text: 'Fünfmal R U R\' U\'. (Profis haben hier Abkürzungen – aber 5× funktioniert immer.)', base: 'solved', setup: inv(rep(ALG.sexy, 5)), mask: 'corners', demo: rep(ALG.sexy, 5) },
-        { title: 'Ecke richtig, aber verdreht', text: 'Die Ecke ist an ihrem Platz, nur zeigt Weiß zur Seite. Einfach so lange R U R\' U\', bis Weiß unten ist (hier 2×).', base: 'solved', setup: inv(rep(ALG.sexy, 2)), mask: 'corners', demo: rep(ALG.sexy, 2) },
+        { title: 'Ecke oben, Weiß zeigt nach rechts → 1×', text: 'Einmal R U R\' U\' und die Ecke sitzt.', base: 'solved', setup: inv(ALG.sexy), mask: 'corners', demo: ALG.sexy },
+        { title: 'Ecke oben, Weiß zeigt nach oben → 3×', text: 'Die Ecke liegt „auf dem Rücken“. Dreimal R U R\' U\'.', base: 'solved', setup: inv(rep(ALG.sexy, 3)), mask: 'corners', demo: rep(ALG.sexy, 3) },
+        { title: 'Ecke oben, Weiß zeigt nach vorne → 5×', text: 'Fünfmal R U R\' U\'. (Profis haben hier Abkürzungen – aber 5× funktioniert immer.)', base: 'solved', setup: inv(rep(ALG.sexy, 5)), mask: 'corners', demo: rep(ALG.sexy, 5) },
+        { title: 'Ecke unten, Weiß zeigt nach vorne → 4×', text: 'Die Ecke sitzt schon am richtigen Platz (vorne rechts unten), aber Weiß schaut dich an statt nach unten. Gelb oben halten und <b>4× R U R\' U\'</b>.', base: 'solved', setup: inv(rep(ALG.sexy, 4)), mask: 'corners', demo: rep(ALG.sexy, 4) },
+        { title: 'Ecke unten, Weiß zeigt nach rechts → 2×', text: 'Richtiger Platz, aber Weiß zeigt nach rechts. Hier reichen <b>2× R U R\' U\'</b>.', base: 'solved', setup: inv(rep(ALG.sexy, 2)), mask: 'corners', demo: rep(ALG.sexy, 2) },
         { title: 'Ecke steckt am falschen Platz unten', text: 'Vorne rechts unten steckt die weiß-grün-rote Ecke – sie gehört aber nach links, und die weiß-grün-orange sitzt dafür links. Halte sie vorne rechts unten und mache <b>einmal R U R\' U\'</b> – das hebelt sie nach oben. Dann wie oben: über ihren Platz drehen und einsetzen.', base: 'solved', setup: "R U R' L' U' L R U R'", mask: 'corners', demo: 'auto' },
       ],
     },
@@ -196,7 +197,7 @@
             <tr><td>Gänseblümchen: Ich würde ein fertiges Blütenblatt rausdrehen</td><td>Vorher die obere Ebene <code>U</code> drehen, bis der Platz frei ist.</td></tr>
             <tr><td>Weißes Kreuz fertig, aber Seitenfarben passen nicht</td><td>Zurück zum Gänseblümchen: Falsche Kante mit <code>F2</code> nach oben holen, richtig ausrichten, wieder <code>F2</code>.</td></tr>
             <tr><td>Weiße Ecke sitzt unten am falschen Platz</td><td>Vorne rechts halten, einmal <code>R U R' U'</code> – jetzt ist sie oben. Über ihren Platz drehen und einsetzen.</td></tr>
-            <tr><td>Weiße Ecke ist am richtigen Platz, aber verdreht</td><td>Vorne rechts halten und <code>R U R' U'</code> wiederholen, bis Weiß unten ist.</td></tr>
+            <tr><td>Weiße Ecke ist unten am richtigen Platz, aber verdreht</td><td>Gelb oben halten, Ecke vorne rechts unten. Weiß zeigt nach vorne: <code>R U R' U'</code> 4×. Weiß zeigt nach rechts: 2×.</td></tr>
             <tr><td>Zweite Ebene: Keine Kante ohne Gelb ist oben</td><td>Eine Kante steckt falsch in der Mitte. Vorne rechts halten, Rechts-Algorithmus <code>U R U' R' U' F' U F</code> → sie kommt nach oben.</td></tr>
             <tr><td>Zweite Ebene: Kante ist am richtigen Platz, aber verdreht</td><td>Genau so: mit dem Rechts-Algorithmus herausholen, dann neu einsetzen.</td></tr>
             <tr><td>Gelbes Kreuz: Ich bekomme immer nur Linie/Winkel</td><td>Achte auf die Lage: Winkel <b>hinten links</b>, Linie <b>waagerecht</b>. Die Ecken sind dabei egal.</td></tr>
