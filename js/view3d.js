@@ -74,6 +74,14 @@
       if (v) { this.rx = v[0]; this.ry = v[1]; this.applyView(); }
     }
 
+    /** Größe eines Steinchens in px ändern (z. B. wenn der Platz sich ändert). */
+    setSize(size) {
+      if (size === this.size) return;
+      this.size = size;
+      this.el.style.setProperty('--s', size + 'px');
+      this.render();
+    }
+
     setCube(cube) {
       this.cube = cube;
       this.render();

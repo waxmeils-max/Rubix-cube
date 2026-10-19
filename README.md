@@ -17,13 +17,15 @@ Ein Löser und Trainer für den 3×3-Zauberwürfel, der die **Anfängermethode (
 
 ## Funktionen
 
+Die App ist für einen Bildschirm gebaut: Der Würfel ist immer sichtbar, darunter (Handy) bzw. daneben (Desktop) liegt die Bedienleiste. Unten (Handy) bzw. oben (Desktop) wechselt man zwischen **Lösen**, **Üben**, **Eingeben** und **Lernen**. Tempo, Ansicht (3D/Netz) und freies Drehen stecken im Optionen-Menü (⚙︎).
+
 - **Erklär-Löser:** Würfel mischen oder den eigenen Würfel eingeben. Jeder Schritt wird mit Text erklärt. Der Stein, um den es gerade geht, leuchtet. Zug für Zug, schrittweise oder automatisch abspielen.
 - **Trainer:** Man übt einen einzelnen Schritt, alles davor ist schon gelöst. Mit „Tipp“ sieht man den nächsten Schritt. Wird dabei ein früherer Schritt kaputt gemacht, weist der Tipp darauf hin.
 - **Würfel eingeben:** Die Farben des echten Würfels im Netz abmalen. Die Eingabe wird geprüft (Farbanzahl, unmögliche Steine, nicht lösbare Lagen).
 - **Anleitung:** Alle Schritte mit Beispielwürfeln zum Vorführen, auch für Sonderfälle wie gekippte Kanten, verdrehte Ecken oder Steine am falschen Platz, plus eine Hilfe-Tabelle „Steine liegen komisch“.
 - **Notation:** Was R, U, F, R', U2, y … bedeuten, mit Animation.
 
-Bedienung per Tastatur: `U D R L F B` drehen, mit Shift gegen den Uhrzeigersinn, `Y` dreht den ganzen Würfel. Im Löser gehen `←`/`→` einen Zug zurück bzw. vor, die Leertaste spielt ab.
+Bedienung per Tastatur: `U D R L F B` drehen, mit Shift gegen den Uhrzeigersinn, `Y` dreht den ganzen Würfel. Im Löser gehen `←`/`→` einen Zug zurück bzw. vor, die Leertaste zeigt den ganzen Schritt. Jeden Zug (R, U, F' …) kann man antippen, um ihn erklärt und vorgeführt zu bekommen.
 
 ## Aufbau
 

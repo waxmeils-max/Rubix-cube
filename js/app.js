@@ -1,7 +1,7 @@
 /* Verdrahtung der Oberfläche. */
 (function () {
   'use strict';
-  const { Cube, FACES, parseMove, invertMove, randomScramble, COLOR_NAMES } = CubeLib;
+  const { Cube, FACES, invertMove, randomScramble, COLOR_NAMES } = CubeLib;
   const { solve, validate, PHASES, CHECKS } = Solver;
   const { LESSONS, MASKS, BASES, NOTATION, moveText } = Lessons;
 
@@ -10,39 +10,79 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const SPEEDS = [650, 450, 300, 180, 90];
   const PHASE_BY_ID = Object.fromEntries(PHASES.map((p, i) => [p.id, Object.assign({ index: i }, p)]));
+  const STRIP_PHASES = PHASES.filter((p) => p.id !== 'orient' && p.id !== 'auf');
 
   const state = {
-    mode: 'solver',
+    screen: 'solve',
     view: '3d',
-    sol: null, // { start, steps, flat, scramble }
+    sol: null, // { start, steps, flat }
     pos: 0,
     playing: false,
     busy: false,
-    scramble: null,
     trainer: null,
+    hint: null,
     paint: 'W',
     inputFacelets: null,
+    scrambled: false,
   };
 
   const view = new CubeView($('#cube3d'), { size: 54 });
 
-  /* ---------- Tabs ---------- */
-  $$('.tab-btn').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
-  function showTab(name) {
-    $$('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
-    $$('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
-    if (name === 'guide') buildGuide();
-    if (name === 'notation') buildNotation();
-    window.scrollTo({ top: 0 });
+  /* ---------- Größe an den Platz anpassen ---------- */
+  function fit() {
+    const st = $('#stage');
+    const w = st.clientWidth;
+    const h = st.clientHeight;
+    if (!w || !h) return;
+    view.setSize(Math.max(20, Math.min(96, Math.floor(Math.min(w, h) / 5.3))));
+    $('#net').style.setProperty('--n', Math.max(14, Math.min(40, Math.floor(Math.min((w - 8) / 12.4, (h - 8) / 9.4)))) + 'px');
+  }
+  new ResizeObserver(fit).observe($('#stage'));
+
+  /* ---------- Bildschirme ---------- */
+  $$('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
+
+  function go(screen) {
+    stopPlay();
+    closeSheets();
+    const wasInput = state.screen === 'input';
+    state.screen = screen;
+    $$('[data-go]').forEach((b) => b.classList.toggle('active', b.dataset.go === screen));
+    $('#ws').hidden = screen === 'learn';
+    $('#learn').hidden = screen !== 'learn';
+    $('#dock-solve').hidden = screen !== 'solve';
+    $('#dock-train').hidden = screen !== 'train';
+    $('#dock-input').hidden = screen !== 'input';
+    view.setFocus(null);
+    if (screen === 'learn') { buildGuide(); return; }
+    if (screen === 'input') {
+      if (!wasInput) state.inputFacelets = view.cube.facelets();
+      showNet(true);
+    } else {
+      showNet(state.view === '2d');
+    }
+    if (screen === 'train') {
+      if (!state.trainer) newTrainerTask();
+      else updateTrainer();
+    }
+    if (screen === 'solve') updateSolveUI();
+    renderStrip();
+    requestAnimationFrame(fit);
   }
 
   /* ---------- Darstellung ---------- */
   function speed() { return SPEEDS[Number($('#speed').value)]; }
 
+  function showNet(on) {
+    $('#cube3d').hidden = on;
+    $('#net').hidden = !on;
+    renderNet();
+  }
+
   function renderNet() {
     const net = $('#net');
     if (net.hidden) return;
-    const fl = state.mode === 'input' ? state.inputFacelets : view.cube.facelets();
+    const fl = state.screen === 'input' ? state.inputFacelets : view.cube.facelets();
     const offs = { U: [0, 3], L: [3, 0], F: [3, 3], R: [3, 6], B: [3, 9], D: [6, 3] };
     const label = { U: 'oben', L: 'links', F: 'vorne', R: 'rechts', B: 'hinten', D: 'unten' };
     let html = '';
@@ -52,31 +92,26 @@
         const r = r0 + Math.floor(i / 3) + 1;
         const c = c0 + (i % 3) + 1;
         const center = i === 4;
-        html += `<div class="nst c-${fl[f][i]}${center ? ' center' : ''}" style="grid-row:${r};grid-column:${c}" data-f="${f}" data-i="${i}">${center ? `<span>${f}<small>${label[f]}</small></span>` : ''}</div>`;
+        html += `<div class="nst c-${fl[f][i]}${center ? ' center' : ''}" style="grid-row:${r};grid-column:${c}" data-f="${f}" data-i="${i}">${center ? `<span>${label[f]}</span>` : ''}</div>`;
       }
     }
     net.innerHTML = html;
-    net.classList.toggle('paintable', state.mode === 'input');
+    net.classList.toggle('paintable', state.screen === 'input');
   }
 
   function setView(v) {
     state.view = v;
     $$('#viewSwitch button').forEach((b) => b.classList.toggle('active', b.dataset.view === v));
-    $('#cube3d').hidden = v !== '3d';
-    $('#net').hidden = v !== '2d';
-    $('.drag-hint').hidden = v !== '3d';
-    $('#resetView').hidden = v !== '3d';
-    renderNet();
+    if (state.screen !== 'input') showNet(v === '2d');
   }
   $$('#viewSwitch button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
   $('#resetView').addEventListener('click', () => view.setView('front'));
 
   async function doMove(token, ms = speed()) {
-    if (state.view === '3d') await view.animate(token, ms);
+    if ($('#net').hidden) await view.animate(token, ms);
     else {
       view.cube.move(token);
       view.render();
-      renderNet();
       await sleep(ms * 0.8);
     }
     renderNet();
@@ -87,77 +122,89 @@
     renderNet();
   }
 
-  /* ---------- Modus ---------- */
-  $$('#modeSwitch button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
-  function setMode(mode) {
-    stopPlay();
-    if (state.mode === 'input' && mode !== 'input') setView(state.prevView || '3d');
-    state.mode = mode;
-    $$('#modeSwitch button').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
-    $('#panel-solver').hidden = mode !== 'solver';
-    $('#panel-trainer').hidden = mode !== 'trainer';
-    $('#panel-input').hidden = mode !== 'input';
-    $('#player').hidden = mode !== 'solver' || !state.sol;
-    $('#pad').hidden = mode === 'input';
-    view.setFocus(null);
-    if (mode === 'input') {
-      state.prevView = state.view;
-      state.inputFacelets = view.cube.facelets();
-      setView('2d');
-      $('#viewSwitch').hidden = true;
-    } else {
-      $('#viewSwitch').hidden = false;
+  /* Fortschrittsleiste oben */
+  function renderStrip() {
+    const strip = $('#strip');
+    if (state.screen === 'input') {
+      strip.innerHTML = '<span class="strip-label">Male die Felder deines Würfels an</span>';
+      return;
     }
-    if (mode === 'trainer' && !state.trainer) newTrainerTask();
-    if (mode === 'trainer') updateTrainer();
-    if (mode === 'solver') updateSolverUI();
+    if (state.screen === 'train') {
+      const t = state.trainer;
+      strip.innerHTML = t ? `<span class="strip-label">Übung: <b>${t.phase === 'full' ? 'Ganzer Würfel' : PHASE_BY_ID[t.phase].title}</b></span>` : '';
+      return;
+    }
+    let cur = -1;
+    const s = state.sol;
+    if (s) {
+      const si = curStepIndex();
+      cur = si >= s.steps.length ? 99 : PHASE_BY_ID[s.steps[si].phase].index;
+    }
+    const cube = view.cube;
+    strip.innerHTML = '<ol class="segs">' + STRIP_PHASES.map((p) => {
+      const idx = PHASE_BY_ID[p.id].index;
+      let cls = '';
+      if (s) cls = idx < cur ? 'done' : idx === cur ? 'current' : '';
+      else if (p.id !== 'daisy' && CHECKS[p.id](cube)) cls = 'done';
+      return `<li class="${cls}" title="${p.title}"><span></span></li>`;
+    }).join('') + '</ol>' + `<span class="strip-label">${stripLabel(cur)}</span>`;
+  }
+  function stripLabel(cur) {
+    if (!state.sol) return state.scrambled ? 'Gemischt – bereit zum Lösen' : '8 Schritte bis zum gelösten Würfel';
+    if (cur === 99) return 'Gelöst!';
+    const p = PHASES[cur];
+    const n = STRIP_PHASES.findIndex((x) => x.id === p.id);
+    return n >= 0 ? `Schritt ${n + 1} von 8: <b>${p.short}</b>` : `<b>${p.title}</b>`;
   }
 
   /* ---------- Dreh-Knöpfe ---------- */
   const PAD = ['U', 'D', 'R', 'L', 'F', 'B', 'y'];
-  $('#padGrid').innerHTML = PAD.map((f) => [f, f + "'", f + '2'].map((t) => `<button class="mv" data-m="${t}" title="${moveText(t)}">${t}</button>`).join('')).join('');
-  $('#padGrid').addEventListener('click', (e) => {
+  const padHtml = PAD.map((f) => [f, f + "'", f + '2'].map((t) => `<button class="mv" data-m="${t}" title="${moveText(t)}">${t}</button>`).join('')).join('');
+  $('#padTrain').innerHTML = padHtml;
+  $('#padOpt').innerHTML = padHtml;
+  [$('#padTrain'), $('#padOpt')].forEach((pad) => pad.addEventListener('click', (e) => {
     const b = e.target.closest('[data-m]');
     if (b) manualMove(b.dataset.m);
-  });
+  }));
 
   async function manualMove(token) {
-    if (state.mode === 'input' || state.busy) return;
+    if (state.screen === 'input' || state.screen === 'learn' || state.busy) return;
     stopPlay();
-    if (state.mode === 'solver' && state.sol) {
-      // Folgt der Zug genau der Lösung? Dann einfach mitgehen.
+    if (state.screen === 'solve' && state.sol) {
       const next = state.sol.flat[state.pos];
       if (next && next.token === token) return stepMove(1);
       state.sol = null;
-      flash('Du hast selbst gedreht – die alte Lösung passt nicht mehr. Drücke „Lösung erklären“ für eine neue.');
+      flash('Du hast selbst gedreht – die Lösung wird neu berechnet, wenn du „Lösung starten“ drückst.');
     }
     flash(`${token}: ${moveText(token)}`);
     state.busy = true;
     await doMove(token);
     state.busy = false;
-    if (state.mode === 'trainer' && state.trainer) {
+    if (state.screen === 'train' && state.trainer) {
       state.trainer.moves.push(token);
-      $('#hintBox').hidden = true;
-      view.setFocus(null);
+      hideHint();
       updateTrainer();
     }
-    if (state.mode === 'solver') updateSolverUI();
+    if (state.screen === 'solve') {
+      state.scrambled = !view.cube.isSolved();
+      updateSolveUI();
+    }
   }
 
   document.addEventListener('keydown', (e) => {
     if (e.target.matches('input, select, textarea') || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (!$('#tab-workspace').classList.contains('active')) return;
+    if (e.key === 'Escape') { closeSheets(); return; }
+    if (state.screen === 'learn' || openSheet()) return;
     const k = e.key;
-    if (state.mode === 'solver' && state.sol) {
+    if (state.screen === 'solve' && state.sol) {
       if (k === 'ArrowRight') { e.preventDefault(); return stepMove(1); }
       if (k === 'ArrowLeft') { e.preventDefault(); return stepMove(-1); }
-      if (k === ' ') { e.preventDefault(); return togglePlay(); }
+      if (k === ' ') { e.preventDefault(); return runStep(); }
     }
     const f = k.toUpperCase();
-    if ('UDRLFBY'.includes(f) && f.length === 1) {
+    if (f.length === 1 && 'UDRLFBY'.includes(f)) {
       e.preventDefault();
-      const face = f === 'Y' ? 'y' : f;
-      manualMove(face + (e.shiftKey ? "'" : ''));
+      manualMove((f === 'Y' ? 'y' : f) + (e.shiftKey ? "'" : ''));
     }
   });
 
@@ -167,35 +214,65 @@
     if (!el) {
       el = document.createElement('div');
       el.id = 'flash';
+      el.setAttribute('role', 'status');
       document.body.appendChild(el);
     }
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(flashTimer);
-    flashTimer = setTimeout(() => el.classList.remove('show'), 3800);
+    flashTimer = setTimeout(() => el.classList.remove('show'), 3200);
   }
 
-  /* ---------- Löser ---------- */
-  $('#btnScramble').addEventListener('click', async () => {
+  /* ---------- Sheets ---------- */
+  function openSheet() { return $$('.sheet').find((s) => !s.hidden); }
+  function showSheet(id) {
+    closeSheets();
+    $(id).hidden = false;
+    const c = $('[data-close]', $(id));
+    if (c) c.focus();
+  }
+  function closeSheets() {
+    $$('.sheet').forEach((s) => { s.hidden = true; });
+    sheetLoop++;
+  }
+  document.addEventListener('click', (e) => {
+    if (e.target.matches('.sheet') || e.target.closest('[data-close]')) closeSheets();
+  });
+  $('#btnMenu').addEventListener('click', () => showSheet('#optSheet'));
+  $('#btnSteps').addEventListener('click', () => {
+    showSheet('#stepsSheet');
+    const cur = $('#stepList .cur');
+    if (cur) cur.scrollIntoView({ block: 'center' });
+  });
+  $('#btnInputHelp').addEventListener('click', () => showSheet('#inputHelp'));
+
+  /* ---------- Lösen ---------- */
+  function scramble() {
     if (state.busy) return;
     stopPlay();
     const scr = randomScramble(22);
-    state.scramble = scr;
     state.sol = null;
-    const c = new Cube().apply(scr);
-    setCube(c);
-    $('#scrambleText').innerHTML = `<b>Mischung:</b> <code>${scr.join(' ')}</code><br><span class="muted">Mische deinen echten Würfel genauso (Gelb oben, Grün vorne), dann kannst du mitdrehen.</span>`;
-    updateSolverUI();
-  });
+    state.scrambled = true;
+    setCube(new Cube().apply(scr));
+    $('#scrambleText').innerHTML = `Mische deinen echten Würfel genauso (Gelb oben, Grün vorne):<br><code>${scr.join(' ')}</code>`;
+    $('#scrambleText').hidden = false;
+    updateSolveUI();
+  }
+  $('#btnScramble').addEventListener('click', scramble);
+  $('#btnAgain').addEventListener('click', scramble);
+  $('#btnInputGo').addEventListener('click', () => go('input'));
+  $('#btnTrainGo').addEventListener('click', () => go('train'));
 
   $('#btnReset').addEventListener('click', () => {
     if (state.busy) return;
     stopPlay();
     state.sol = null;
-    state.scramble = null;
+    state.scrambled = false;
+    $('#scrambleText').hidden = true;
     setCube(new Cube());
-    $('#scrambleText').textContent = 'Würfel ist gelöst. Mische ihn oder gib deinen eigenen ein.';
-    updateSolverUI();
+    closeSheets();
+    if (state.screen === 'solve') updateSolveUI();
+    if (state.screen === 'train') updateTrainer();
   });
 
   $('#btnSolve').addEventListener('click', () => {
@@ -214,8 +291,7 @@
     state.sol = { start: view.cube.clone(), steps: res.steps, flat };
     state.pos = 0;
     buildStepList();
-    $('#stepListWrap').open = false;
-    updateSolverUI();
+    updateSolveUI();
   }
 
   function curStepIndex() {
@@ -242,15 +318,15 @@
     if (dir > 0) {
       const t = s.flat[state.pos].token;
       state.pos++;
-      updateSolverUI(true);
+      updateSolveUI();
       await doMove(t);
     } else {
       state.pos--;
-      updateSolverUI(true);
+      updateSolveUI();
       await doMove(invertMove(s.flat[state.pos].token));
     }
     state.busy = false;
-    updateSolverUI();
+    updateSolveUI();
   }
 
   function jumpTo(p) {
@@ -259,32 +335,20 @@
     stopPlay();
     state.pos = Math.max(0, Math.min(s.flat.length, p));
     setCube(s.start.clone().apply(s.flat.slice(0, state.pos).map((m) => m.token)));
-    updateSolverUI();
+    updateSolveUI();
   }
 
+  /** Zeigt den aktuellen Schritt ganz (oder alles bis zum Ende, wenn nicht angehalten wird). */
   async function runStep() {
     const s = state.sol;
-    if (!s || state.busy || state.pos >= s.flat.length) return;
+    if (!s) return;
+    if (state.playing) return stopPlay();
+    if (state.busy || state.pos >= s.flat.length) return;
+    const pause = $('#pauseStep').checked;
     const si = s.flat[state.pos].si;
     state.playing = true;
     updatePlayBtn();
-    while (state.playing && state.pos < s.flat.length && s.flat[state.pos].si === si) await stepMove(1);
-    stopPlay();
-  }
-
-  async function togglePlay() {
-    if (state.playing) return stopPlay();
-    const s = state.sol;
-    if (!s || state.pos >= s.flat.length) return;
-    state.playing = true;
-    updatePlayBtn();
-    const pause = $('#pauseStep').checked;
-    let si = s.flat[state.pos].si;
-    while (state.playing && state.pos < s.flat.length) {
-      if (pause && s.flat[state.pos].si !== si) break;
-      si = s.flat[state.pos].si;
-      await stepMove(1);
-    }
+    while (state.playing && state.pos < s.flat.length && (!pause || s.flat[state.pos].si === si)) await stepMove(1);
     stopPlay();
   }
 
@@ -293,87 +357,69 @@
     updatePlayBtn();
   }
   function updatePlayBtn() {
-    $('#pPlay').textContent = state.playing ? '⏸' : '▶';
+    const b = $('#pStepFwd');
+    b.textContent = state.playing ? '⏸' : '⏩';
+    b.setAttribute('aria-label', state.playing ? 'Anhalten' : 'Ganzen Schritt zeigen');
   }
 
-  $('#pPlay').addEventListener('click', togglePlay);
   $('#pFwd').addEventListener('click', () => { stopPlay(); stepMove(1); });
   $('#pBack').addEventListener('click', () => { stopPlay(); stepMove(-1); });
-  $('#pFirst').addEventListener('click', () => jumpTo(0));
-  $('#pLast').addEventListener('click', () => jumpTo(Infinity));
-  $('#pStepFwd').addEventListener('click', () => { if (!state.playing) runStep(); });
-  $('#pStepBack').addEventListener('click', () => {
-    const s = state.sol;
-    if (!s) return;
-    // erst zum Anfang des aktuellen Schritts, dann zum vorherigen
-    const si = Math.min(curStepIndex(), s.steps.length - 1);
-    const [a] = stepBounds(si);
-    if (state.pos > a) jumpTo(a);
-    else if (si > 0) jumpTo(stepBounds(si - 1)[0]);
-  });
-
-  function phaseList(activeId) {
-    const s = state.sol;
-    const used = s ? new Set(s.steps.map((x) => x.phase)) : null;
-    const cube = view.cube;
-    const curIdx = activeId ? PHASE_BY_ID[activeId].index : -1;
-    return PHASES.filter((p) => p.id !== 'orient' && p.id !== 'auf').map((p) => {
-      let cls = '';
-      const idx = PHASE_BY_ID[p.id].index;
-      if (s) {
-        if (idx < curIdx || curIdx === -1 && state.pos >= s.flat.length) cls = 'done';
-        else if (idx === curIdx) cls = 'current';
-        if (!used.has(p.id) && idx < curIdx) cls = 'done';
-      } else if (p.id !== 'daisy' && CHECKS[p.id](cube)) cls = 'done';
-      return `<li class="${cls}" data-phase="${p.id}"><span class="dot"></span>${p.short}</li>`;
-    }).join('');
-  }
+  $('#pStepFwd').addEventListener('click', runStep);
 
   function chips(moves, doneUpTo, extraClass = '') {
     return moves.map((t, i) => `<button type="button" class="chip ${extraClass}${i < doneUpTo ? ' done' : ''}${i === doneUpTo ? ' next' : ''}" data-m="${t}" data-i="${i}" title="${moveText(t)} – antippen für Erklärung">${t}</button>`).join('');
   }
 
-  function updateSolverUI(soft) {
+  function updateSolveUI() {
     const s = state.sol;
-    $('#player').hidden = state.mode !== 'solver' || !s;
-    const card = $('#stepCard');
+    renderStrip();
+    const start = $('#solveStart');
+    const coach = $('#coach');
+    const solved = $('#solved');
     if (!s) {
-      $('#phases').innerHTML = phaseList(null);
+      start.hidden = false;
+      coach.hidden = true;
+      solved.hidden = true;
       view.setFocus(null);
-      if (!card.querySelector('.empty')) {
-        card.innerHTML = `<div class="empty"><h3>Bereit</h3><p>Drücke <b>„Lösung erklären“</b>, um Schritt für Schritt durch die Lösung geführt zu werden.</p></div>`;
-      }
+      const canSolve = !view.cube.isSolved();
+      $('#btnSolve').hidden = !canSolve;
+      $('#btnScramble').textContent = canSolve ? '🔀 Neu mischen' : '🔀 Mischen';
+      if (!canSolve) $('#scrambleText').hidden = true;
       return;
     }
     const si = curStepIndex();
     const total = s.flat.length;
     if (si >= s.steps.length) {
-      $('#phases').innerHTML = phaseList(null);
+      start.hidden = true;
+      coach.hidden = true;
+      solved.hidden = false;
       view.setFocus(null);
-      card.innerHTML = `<div class="done-card"><div class="big">🎉</div><h3>Gelöst!</h3><p>${total} Züge (inklusive Würfeldrehungen). Profis brauchen mit anderen Methoden rund 50–60 – aber diese Methode ist die, die du dir am leichtesten merken kannst.</p><p><b>Tipp:</b> Mische neu und versuche, die Schritte zuerst selbst im <b>Trainer</b> zu machen.</p></div>`;
+      $('#solvedText').innerHTML = `${total} Züge. Mische neu oder übe die Schritte im Trainer selbst. <button class="link" id="btnBackLast">Letzten Zug zurück</button>`;
+      $('#btnBackLast').onclick = () => stepMove(-1);
       highlightList(si);
       return;
     }
+    start.hidden = true;
+    solved.hidden = true;
+    coach.hidden = false;
     const step = s.steps[si];
     const [a] = stepBounds(si);
     const done = state.pos - a;
-    const ph = PHASE_BY_ID[step.phase];
-    $('#phases').innerHTML = phaseList(step.phase);
-    const nextTok = step.moves[done];
-    const algInfo = step.repeat ? `<div class="alg-line">Algorithmus: <code>${step.alg}</code> × ${step.repeat}</div>` : step.alg ? `<div class="alg-line">Algorithmus: <code>${step.alg}</code></div>` : '';
-    card.dataset.si = si;
-    card.innerHTML = `
-      <div class="step-head"><span class="phase-tag">${ph.title}</span><span class="muted">Schritt ${si + 1} / ${s.steps.length} · Zug ${state.pos} / ${total}</span></div>
-      <h3>${step.title}</h3>
-      <p class="step-text">${step.text}</p>
-      ${algInfo}
-      <div class="chips">${chips(step.moves, done)}</div>
-      <div class="chip-hint muted">Tipp: Tippe einen Zug an, um zu sehen, was er bedeutet.</div>
-      <div class="move-explain">${nextTok ? `<b>Nächster Zug: <span class="tok">${nextTok}</span></b> – ${moveText(nextTok)}` : ''}</div>
-      ${step.note ? `<div class="note">${step.note}</div>` : ''}
-      <div class="progress"><div style="width:${(100 * state.pos) / total}%"></div></div>`;
+    coach.dataset.si = si;
+    $('#cPhase').textContent = PHASE_BY_ID[step.phase].title;
+    $('#cCount').textContent = `${si + 1}/${s.steps.length}`;
+    $('#cTitle').textContent = step.title;
+    $('#cText').innerHTML = step.text + (step.note ? ` <span class="note">${step.note}</span>` : '');
+    $('#cChips').innerHTML = chips(step.moves, done);
+    const nextChip = $('#cChips .chip.next');
+    if (nextChip) nextChip.scrollIntoView({ block: 'nearest', inline: 'center' });
+    const tok = step.moves[done];
+    $('#cNextTok').textContent = tok || '';
+    $('#cNextDesc').textContent = tok ? moveText(tok) : '';
+    $('#pBack').disabled = state.pos === 0;
+    $('#cProgress').style.width = `${(100 * state.pos) / total}%`;
     view.setFocus(step.focus);
-    if (!soft) highlightList(si);
+    highlightList(si);
   }
 
   function buildStepList() {
@@ -391,7 +437,9 @@
   }
   $('#stepList').addEventListener('click', (e) => {
     const b = e.target.closest('[data-si]');
-    if (b) jumpTo(stepBounds(Number(b.dataset.si))[0]);
+    if (!b) return;
+    closeSheets();
+    jumpTo(stepBounds(Number(b.dataset.si))[0]);
   });
   function highlightList(si) {
     $$('#stepList .sl-item').forEach((b) => {
@@ -401,28 +449,27 @@
     });
   }
 
-  /* ---------- Trainer ---------- */
+  /* ---------- Üben ---------- */
   const TRAIN_PHASES = ['daisy', 'cross', 'corners', 'middle', 'ycross', 'yedges', 'ycorners', 'yorient', 'full'];
   const TRAIN_GOALS = {
-    daisy: 'Bringe alle vier <b>weißen Kanten</b> nach oben um die gelbe Mitte – Weiß zeigt nach oben.',
-    cross: 'Klappe die Blütenblätter nach unten, sodass ein <b>weißes Kreuz</b> entsteht, bei dem die Seitenfarben zu den Mitten passen.',
-    corners: 'Setze die vier <b>weißen Ecken</b> ein, sodass die ganze weiße Ebene fertig ist.',
-    middle: 'Setze die vier Kanten der <b>mittleren Ebene</b> ein (die Kanten ohne Gelb).',
-    ycross: 'Mache oben ein <b>gelbes Kreuz</b> (Ecken sind noch egal).',
-    yedges: 'Richte die <b>gelben Kanten</b> so aus, dass ihre Seitenfarben zu den Mitten passen.',
-    ycorners: 'Bringe alle <b>gelben Ecken an ihren Platz</b> (sie dürfen noch verdreht sein).',
-    yorient: 'Drehe die <b>gelben Ecken</b>, bis der Würfel gelöst ist.',
-    full: 'Löse den <b>ganzen Würfel</b> selbst. Hol dir Tipps, wenn du nicht weiterkommst.',
+    daisy: 'Alle vier <b>weißen Kanten</b> nach oben um die gelbe Mitte – Weiß zeigt nach oben.',
+    cross: 'Blütenblätter nach unten klappen: <b>weißes Kreuz</b>, Seitenfarben passen zu den Mitten.',
+    corners: 'Die vier <b>weißen Ecken</b> einsetzen – die weiße Ebene ist dann fertig.',
+    middle: 'Die vier Kanten der <b>mittleren Ebene</b> einsetzen (Kanten ohne Gelb).',
+    ycross: 'Oben ein <b>gelbes Kreuz</b> machen (Ecken sind noch egal).',
+    yedges: '<b>Gelbe Kanten</b> so drehen, dass ihre Seitenfarben zu den Mitten passen.',
+    ycorners: 'Alle <b>gelben Ecken an ihren Platz</b> bringen (verdreht ist noch okay).',
+    yorient: 'Die <b>gelben Ecken drehen</b>, bis der Würfel gelöst ist.',
+    full: 'Den <b>ganzen Würfel</b> selbst lösen. Hol dir Tipps, wenn du hängst.',
   };
-  $('#trainerPhase').innerHTML = TRAIN_PHASES.map((p, i) => `<option value="${p}">${i + 1}. ${p === 'full' ? 'Ganzer Würfel' : PHASE_BY_ID[p].title}</option>`).join('');
+  $('#trainerPhase').innerHTML = TRAIN_PHASES.map((p, i) => `<option value="${p}">${p === 'full' ? 'Ganzer Würfel' : `${i + 1}. ${PHASE_BY_ID[p].title}`}</option>`).join('');
   $('#btnTrainNew').addEventListener('click', () => newTrainerTask());
   $('#trainerPhase').addEventListener('change', () => newTrainerTask());
   $('#btnTrainRestart').addEventListener('click', () => {
     if (!state.trainer || state.busy) return;
     state.trainer.moves = [];
     setCube(state.trainer.start.clone());
-    $('#hintBox').hidden = true;
-    view.setFocus(null);
+    hideHint();
     updateTrainer();
   });
   $('#btnUndo').addEventListener('click', async () => {
@@ -431,6 +478,7 @@
     state.busy = true;
     await doMove(invertMove(t.moves.pop()));
     state.busy = false;
+    hideHint();
     updateTrainer();
   });
 
@@ -452,85 +500,92 @@
       const res = solve(c);
       const idx = res.steps.findIndex((s) => s.phase === phase);
       if (idx < 0) continue;
-      const pre = res.steps.slice(0, idx).flatMap((s) => s.moves);
-      const sc = c.clone().apply(pre);
+      const sc = c.clone().apply(res.steps.slice(0, idx).flatMap((s) => s.moves));
       if (!trainerGoalReached(phase, sc)) start = sc;
     }
-    state.trainer = { phase, start, moves: [], solvedAt: null };
+    state.trainer = { phase, start, moves: [] };
+    state.sol = null;
     setCube(start.clone());
-    $('#hintBox').hidden = true;
-    view.setFocus(null);
+    hideHint();
     updateTrainer();
   }
 
   function updateTrainer() {
     const t = state.trainer;
     if (!t) return;
-    const title = t.phase === 'full' ? 'Ganzer Würfel' : PHASE_BY_ID[t.phase].title;
+    renderStrip();
     const lesson = LESSONS.find((l) => l.phase === t.phase);
-    $('#trainerGoal').innerHTML = `<div class="phase-tag">${title}</div><p><b>Ziel:</b> ${TRAIN_GOALS[t.phase]}</p>${lesson ? `<button class="link" data-lesson="${lesson.id}">→ Erklärung zu diesem Schritt lesen</button>` : ''}`;
     const ok = trainerGoalReached(t.phase, view.cube);
     const st = $('#trainerStatus');
     if (ok && t.moves.length) {
       st.className = 'status ok';
-      st.innerHTML = `✅ <b>Geschafft!</b> Du hast ${t.moves.length} Züge gebraucht. <button class="link" id="trainNext">Nächste Aufgabe →</button>`;
+      st.innerHTML = `✅ <b>Geschafft</b> in ${t.moves.length} Zügen! <button class="link" id="trainNext">Nächste Aufgabe →</button>`;
       $('#trainNext').onclick = () => newTrainerTask();
     } else if (ok) {
       st.className = 'status';
       st.textContent = 'Dieser Schritt ist schon fertig.';
     } else {
       st.className = 'status';
-      st.innerHTML = `Dein Zug ist dran. Bisher <b>${t.moves.length}</b> Züge. ${t.moves.length ? `<span class="muted">Zuletzt: ${t.moves.slice(-6).join(' ')}</span>` : ''}`;
+      const more = lesson ? ` <button class="link" data-lesson="${lesson.id}">Wie geht das?</button>` : '';
+      const count = t.moves.length ? `<span class="status-sub">${t.moves.length} Züge · zuletzt <code>${t.moves.slice(-5).join(' ')}</code></span>` : '';
+      st.innerHTML = `<b>Ziel:</b> ${TRAIN_GOALS[t.phase]}${more}${count}`;
     }
   }
-  $('#trainerGoal').addEventListener('click', (e) => {
+  $('#trainerStatus').addEventListener('click', (e) => {
     const b = e.target.closest('[data-lesson]');
-    if (b) { showTab('guide'); setTimeout(() => document.getElementById('lesson-' + b.dataset.lesson).scrollIntoView({ behavior: 'smooth' }), 50); }
+    if (b) openLesson(b.dataset.lesson);
   });
 
   function currentHint() {
     const t = state.trainer;
     if (!t || trainerGoalReached(t.phase, view.cube)) return null;
-    const res = solve(view.cube);
-    const step = res.steps[0];
+    const step = solve(view.cube).steps[0];
     if (!step) return null;
     const target = t.phase === 'full' ? -1 : PHASE_BY_ID[t.phase].index;
     const warn = target >= 0 && PHASE_BY_ID[step.phase].index < target
-      ? `<div class="warn">⚠️ Ein früherer Schritt (<b>${PHASE_BY_ID[step.phase].title}</b>) ist nicht mehr fertig – vermutlich hat ein Zug ihn kaputt gemacht. Du kannst „Zug zurück“ drücken oder ihn reparieren:</div>` : '';
+      ? `<div class="warn">⚠️ <b>${PHASE_BY_ID[step.phase].title}</b> ist nicht mehr fertig. Drücke ↶ oder repariere es so:</div>` : '';
     return { step, warn };
   }
 
-  $('#btnHint').addEventListener('click', () => {
+  function showHint() {
     const h = currentHint();
     const box = $('#hintBox');
     box.hidden = false;
-    if (!h) { box.innerHTML = 'Hier gibt es nichts mehr zu tun – Ziel erreicht!'; return; }
+    $('#trainerStatus').hidden = true;
+    if (!h) { box.textContent = 'Ziel erreicht – hier gibt es nichts mehr zu tun.'; return null; }
     const { step, warn } = h;
     state.hint = { cube: view.cube.clone(), moves: step.moves };
-    box.innerHTML = `${warn}<h4>${step.title}</h4><p>${step.text}</p><div class="chips">${chips(step.moves, -1)}</div>`;
+    box.innerHTML = `${warn}<p><b>${step.title}:</b> ${step.text}</p><div class="chips nowrap">${chips(step.moves, -1)}</div>`;
     view.setFocus(step.focus);
-  });
+    return h;
+  }
+  function hideHint() {
+    $('#hintBox').hidden = true;
+    $('#trainerStatus').hidden = false;
+    view.setFocus(null);
+  }
+  $('#btnHint').addEventListener('click', () => ($('#hintBox').hidden ? showHint() : hideHint()));
 
   $('#btnHintDo').addEventListener('click', async () => {
     if (state.busy) return;
-    const h = currentHint();
+    const h = showHint();
     if (!h) return;
-    $('#btnHint').click();
     state.busy = true;
-    const chipsEl = $$('#hintBox .chip');
+    const cs = $$('#hintBox .chip');
     for (let i = 0; i < h.step.moves.length; i++) {
-      chipsEl.forEach((c, j) => { c.classList.toggle('done', j < i); c.classList.toggle('next', j === i); });
+      cs.forEach((c, j) => { c.classList.toggle('done', j < i); c.classList.toggle('next', j === i); });
       await doMove(h.step.moves[i]);
       state.trainer.moves.push(h.step.moves[i]);
     }
-    chipsEl.forEach((c) => { c.classList.add('done'); c.classList.remove('next'); });
+    cs.forEach((c) => { c.classList.add('done'); c.classList.remove('next'); });
     state.busy = false;
+    hideHint();
     updateTrainer();
   });
 
-  /* ---------- Eingabe ---------- */
+  /* ---------- Eingeben ---------- */
   const PAL = ['W', 'Y', 'G', 'B', 'O', 'R'];
-  $('#palette').innerHTML = PAL.map((c) => `<button class="sw c-${c}${c === state.paint ? ' active' : ''}" data-c="${c}" title="${COLOR_NAMES[c]}"></button>`).join('');
+  $('#palette').innerHTML = PAL.map((c) => `<button class="sw c-${c}${c === state.paint ? ' active' : ''}" data-c="${c}" aria-label="${COLOR_NAMES[c]}"></button>`).join('');
   $('#palette').addEventListener('click', (e) => {
     const b = e.target.closest('[data-c]');
     if (!b) return;
@@ -538,13 +593,12 @@
     $$('#palette .sw').forEach((x) => x.classList.toggle('active', x === b));
   });
   $('#net').addEventListener('click', (e) => {
-    if (state.mode !== 'input') return;
+    if (state.screen !== 'input') return;
     const cell = e.target.closest('.nst');
     if (!cell) return;
     if (cell.classList.contains('center')) { flash('Die Mitten sind fest – halte den Würfel mit Gelb oben und Grün vorne.'); return; }
-    const f = cell.dataset.f;
-    const i = Number(cell.dataset.i);
-    state.inputFacelets[f][i] = state.paint;
+    state.inputFacelets[cell.dataset.f][Number(cell.dataset.i)] = state.paint;
+    $('#inputMsg').hidden = true;
     renderNet();
   });
   $('#btnClear').addEventListener('click', () => {
@@ -563,30 +617,28 @@
     const missing = FACES.reduce((n, f) => n + fl[f].filter((c) => c === 'X').length, 0);
     msg.hidden = false;
     msg.className = 'msg err';
-    if (missing) { msg.textContent = `Es fehlen noch ${missing} Felder.`; return; }
+    if (missing) { msg.textContent = `Es fehlen noch ${missing} Felder (grau).`; return; }
     const cube = Cube.fromFacelets(fl);
     let err;
     try { err = validate(cube); } catch (e) { err = e.message; }
     if (err) { msg.textContent = err; return; }
     msg.hidden = true;
-    state.scramble = null;
-    setMode('solver');
     setCube(cube);
+    state.scrambled = true;
     $('#scrambleText').innerHTML = 'Dein eingegebener Würfel. Halte ihn mit <b>Gelb oben</b> und <b>Grün vorne</b> und dreh mit!';
+    $('#scrambleText').hidden = false;
+    go('solve');
     startSolution();
   });
 
-  /* ---------- Anleitung ---------- */
+  /* ---------- Lernen ---------- */
   let guideBuilt = false;
   function buildGuide() {
     if (guideBuilt) return;
     guideBuilt = true;
-    const toc = $('#toc');
-    toc.innerHTML = '<h4>Inhalt</h4>' + LESSONS.map((l) => `<a href="#lesson-${l.id}">${l.title}</a>`).join('');
-    const wrap = $('#lessons');
-    wrap.innerHTML = LESSONS.map((l) => `
-      <article class="lesson card" id="lesson-${l.id}">
-        <h2>${l.title}</h2>
+    const items = LESSONS.map((l) => `
+      <details class="lesson" id="lesson-${l.id}" data-l="${l.id}">
+        <summary><span class="ls-title">${l.title}</span></summary>
         <div class="lesson-body">${l.html}</div>
         ${l.cases && l.cases.length ? `<div class="cases">${l.cases.map((c, i) => `
           <div class="case" data-l="${l.id}" data-c="${i}">
@@ -594,40 +646,62 @@
             <h4>${c.title}</h4>
             <p>${c.text}</p>
             <div class="chips mini-chips"></div>
-            <div class="btn-row"><button class="small accent play">▶ Vorführen</button><button class="small reset">↺</button></div>
+            <div class="case-actions"><button class="btn small accent play">▶ Vorführen</button><button class="btn small icon reset" aria-label="Zurücksetzen">⟲</button></div>
           </div>`).join('')}</div>` : ''}
-        ${l.phase ? `<div class="btn-row"><button class="primary" data-train="${l.phase}">Diesen Schritt im Trainer üben</button></div>` : ''}
-      </article>`).join('');
-    $$('.case', wrap).forEach(initCase);
-    wrap.addEventListener('click', (e) => {
+        ${l.phase ? `<button class="btn primary" data-train="${l.phase}">Diesen Schritt üben</button>` : ''}
+      </details>`).join('');
+    const nota = `
+      <details class="lesson" id="lesson-notation">
+        <summary><span class="ls-title">Zug-Sprache: Was bedeuten R, U, F …?</span></summary>
+        <div class="lesson-body">
+          <p>Jeder Buchstabe ist eine Seite: <b>R</b>echts, <b>L</b>inks, <b>U</b> = oben, <b>D</b> = unten, <b>F</b> = vorne, <b>B</b> = hinten. Allein = <b>im Uhrzeigersinn</b>, wenn du direkt auf die Seite schaust. Mit Strich (<b>R'</b>) = gegen den Uhrzeigersinn, mit 2 (<b>R2</b>) = halbe Drehung. <b>y</b> dreht den ganzen Würfel.</p>
+          <p class="muted">Tippe einen Würfel an, um den Zug zu sehen.</p>
+        </div>
+        <div class="notation-grid">${NOTATION.map(([t, d]) => `<button class="nota" data-m="${t}"><span class="mini"></span><span class="nota-txt"><span class="big-tok">${t}</span>${d}</span></button>`).join('')}</div>
+      </details>`;
+    $('#lessons').innerHTML = nota.replace('<details', '<details') + items;
+    // Reihenfolge: Grundlagen zuerst, dann Zug-Sprache
+    const basics = $('#lesson-basics');
+    basics.after($('#lesson-notation'));
+    $$('#lessons details').forEach((d) => d.addEventListener('toggle', () => {
+      if (!d.open) return;
+      $$('#lessons details').forEach((o) => { if (o !== d) o.open = false; });
+      initLesson(d);
+      d.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }));
+    $('#lessons').addEventListener('click', (e) => {
       const b = e.target.closest('[data-train]');
       if (!b) return;
-      showTab('workspace');
       $('#trainerPhase').value = b.dataset.train;
       state.trainer = null;
-      setMode('trainer');
+      go('train');
     });
-    toc.addEventListener('click', (e) => {
-      const a = e.target.closest('a');
-      if (!a) return;
-      e.preventDefault();
-      document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
-    });
+  }
+
+  function openLesson(id) {
+    go('learn');
+    const d = document.getElementById('lesson-' + id);
+    if (d) d.open = true;
+  }
+
+  function initLesson(d) {
+    if (d.dataset.ready) return;
+    d.dataset.ready = '1';
+    $$('.case', d).forEach(initCase);
+    $$('.nota', d).forEach(initNota);
   }
 
   function initCase(el) {
     const lesson = LESSONS.find((l) => l.id === el.dataset.l);
     const c = lesson.cases[Number(el.dataset.c)];
     const startCube = () => new Cube().apply(BASES[c.base]).apply(c.setup);
-    const v = new CubeView($('.mini', el), { size: 28, mask: MASKS[c.mask], view: c.view || 'front', cube: startCube() });
+    const v = new CubeView($('.mini', el), { size: 26, mask: MASKS[c.mask], view: c.view || 'front', cube: startCube() });
     let demo = c.demo;
-    if (demo === 'auto') {
-      demo = solve(startCube()).steps.filter((s) => s.phase === lesson.phase).flatMap((s) => s.moves);
-    }
+    if (demo === 'auto') demo = solve(startCube()).steps.filter((s) => s.phase === lesson.phase).flatMap((s) => s.moves);
     const moves = CubeLib.parseSeq(demo);
     const chipBox = $('.mini-chips', el);
-    el._moveCtx = { start: startCube, moves };
     chipBox.innerHTML = chips(moves, -1, 'sm');
+    el._moveCtx = { start: startCube, moves };
     let running = false;
     let token = 0;
     $('.play', el).addEventListener('click', async () => {
@@ -653,44 +727,38 @@
     });
   }
 
-  /* ---------- Notation ---------- */
-  let notationBuilt = false;
-  function buildNotation() {
-    if (notationBuilt) return;
-    notationBuilt = true;
-    const grid = $('#notationGrid');
-    grid.innerHTML = NOTATION.map(([t, d]) => `<div class="card nota" data-m="${t}"><div class="mini"></div><div><div class="tok big-tok">${t}</div><p>${d}</p></div></div>`).join('');
-    $$('.nota', grid).forEach((el) => {
-      const t = el.dataset.m;
-      const v = new CubeView($('.mini', el), { size: 24, drag: false, view: t[0] === 'B' ? 'back' : t[0] === 'D' ? 'low' : 'front' });
-      let busy = false;
-      el.addEventListener('click', async () => {
-        if (busy) return;
-        busy = true;
-        v.setCube(new Cube());
-        await v.animate(t, 550);
-        await sleep(700);
-        v.setCube(new Cube());
-        busy = false;
-      });
+  function initNota(el) {
+    const t = el.dataset.m;
+    const v = new CubeView($('.mini', el), { size: 20, drag: false, view: t[0] === 'B' ? 'back' : t[0] === 'D' ? 'low' : 'front' });
+    let busy = false;
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (busy) return;
+      busy = true;
+      v.setCube(new Cube());
+      await v.animate(t, 550);
+      await sleep(700);
+      v.setCube(new Cube());
+      busy = false;
     });
   }
 
   /* ---------- Zug-Erklärung beim Antippen eines Zugs ---------- */
   const sheet = document.createElement('div');
   sheet.id = 'moveSheet';
+  sheet.className = 'sheet';
   sheet.hidden = true;
   sheet.innerHTML = `
-    <div class="ms-card" role="dialog" aria-modal="true" aria-labelledby="msTok">
-      <button type="button" class="ms-close" id="msClose" aria-label="Schließen">×</button>
+    <div class="sheet-card ms-card" role="dialog" aria-modal="true" aria-labelledby="msTok">
+      <button type="button" class="sheet-close" data-close aria-label="Schließen">×</button>
       <div class="ms-mini"></div>
       <div class="ms-body">
         <div class="ms-tok" id="msTok"></div>
         <p class="ms-text" id="msText"></p>
         <p class="ms-ctx" id="msCtx"></p>
-        <div class="btn-row">
-          <button type="button" class="small" id="msReplay">↻ Nochmal zeigen</button>
-          <button type="button" class="small primary" id="msDo" hidden>Jetzt ausführen</button>
+        <div class="case-actions">
+          <button type="button" class="btn small" id="msReplay">↻ Nochmal</button>
+          <button type="button" class="btn small primary" id="msDo" hidden>Jetzt ausführen</button>
         </div>
       </div>
     </div>`;
@@ -716,20 +784,12 @@
     $('#msText').textContent = moveText(ctx.token);
     $('#msCtx').textContent = ctx.info || '';
     $('#msDo').hidden = !ctx.canDo;
-    sheet.hidden = false;
-    $('#msClose').focus();
+    showSheet('#moveSheet');
     loopDemo();
   }
-  function closeMoveSheet() {
-    sheet.hidden = true;
-    sheetLoop++;
-  }
-  $('#msClose').addEventListener('click', closeMoveSheet);
-  sheet.addEventListener('click', (e) => { if (e.target === sheet) closeMoveSheet(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) closeMoveSheet(); }, true);
   $('#msReplay').addEventListener('click', () => loopDemo());
   $('#msDo').addEventListener('click', () => {
-    closeMoveSheet();
+    closeSheets();
     stopPlay();
     stepMove(1);
   });
@@ -739,15 +799,14 @@
     if (!chip) return;
     const token = chip.dataset.m;
     const i = Number(chip.dataset.i);
-    const card = chip.closest('#stepCard');
     const caseEl = chip.closest('.case');
     const ctx = { token, base: new Cube(), info: '', canDo: false };
-    if (card && state.sol) {
-      const si = Number(card.dataset.si);
+    if (chip.closest('#coach') && state.sol) {
+      const si = Number($('#coach').dataset.si);
       const [a] = stepBounds(si);
       const n = state.sol.steps[si].moves.length;
-      ctx.base = state.sol.start.clone().apply(state.sol.flat.slice(0, a + i).map((m) => m.token));
       const p = a + i;
+      ctx.base = state.sol.start.clone().apply(state.sol.flat.slice(0, p).map((m) => m.token));
       ctx.info = `Zug ${i + 1} von ${n} in diesem Schritt` + (p < state.pos ? ' – schon erledigt.' : p === state.pos ? ' – das ist der nächste Zug.' : '.');
       ctx.canDo = p === state.pos && !state.busy;
     } else if (chip.closest('#hintBox') && state.hint) {
@@ -761,6 +820,6 @@
   });
 
   /* ---------- Start ---------- */
-  setView('3d');
-  updateSolverUI();
+  go('solve');
+  fit();
 })();
