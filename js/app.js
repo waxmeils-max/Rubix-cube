@@ -48,13 +48,15 @@
     const wasInput = state.screen === 'input';
     state.screen = screen;
     $$('[data-go]').forEach((b) => b.classList.toggle('active', b.dataset.go === screen));
-    $('#ws').hidden = screen === 'learn';
+    $('#ws').hidden = screen === 'learn' || screen === 'help';
     $('#learn').hidden = screen !== 'learn';
+    $('#help').hidden = screen !== 'help';
     $('#dock-solve').hidden = screen !== 'solve';
     $('#dock-train').hidden = screen !== 'train';
     $('#dock-input').hidden = screen !== 'input';
     view.setFocus(null);
     if (screen === 'learn') { buildGuide(); return; }
+    if (screen === 'help') { renderHelp(); return; }
     if (screen === 'input') {
       if (!wasInput) state.inputFacelets = view.cube.facelets();
       showNet(true);
@@ -693,11 +695,15 @@
 
   function initCase(el) {
     const lesson = LESSONS.find((l) => l.id === el.dataset.l);
-    const c = lesson.cases[Number(el.dataset.c)];
+    initDemo(el, lesson.cases[Number(el.dataset.c)], lesson.phase);
+  }
+
+  /** Mini-Würfel mit Vorführung in einem .case-Element. */
+  function initDemo(el, c, phase) {
     const startCube = () => new Cube().apply(BASES[c.base]).apply(c.setup);
     const v = new CubeView($('.mini', el), { size: 26, mask: MASKS[c.mask], view: c.view || 'front', cube: startCube() });
     let demo = c.demo;
-    if (demo === 'auto') demo = solve(startCube()).steps.filter((s) => s.phase === lesson.phase).flatMap((s) => s.moves);
+    if (demo === 'auto') demo = solve(startCube()).steps.filter((s) => s.phase === phase).flatMap((s) => s.moves);
     const moves = CubeLib.parseSeq(demo);
     const chipBox = $('.mini-chips', el);
     chipBox.innerHTML = chips(moves, -1, 'sm');
@@ -742,6 +748,69 @@
       busy = false;
     });
   }
+
+  /* ---------- Hilfe-Assistent ---------- */
+  const { NODES } = Helper;
+  const ENTRY = { daisy: 'daisy', cross: 'cross', corners: 'corners', middle: 'middle', ycross: 'ycross', yedges: 'yedges', ycorners: 'ycorners', yorient: 'yorient', auf: 'start' };
+  const helpState = { node: 'start', history: [] };
+
+  function helpGo(id, push = true) {
+    if (push && id !== helpState.node) helpState.history.push(helpState.node);
+    helpState.node = id;
+    renderHelp();
+    $('#help').scrollTop = 0;
+  }
+
+  function demoSpec(d) {
+    if (!d) return null;
+    if (Array.isArray(d)) {
+      const l = LESSONS.find((x) => x.id === d[0]);
+      return Object.assign({ phase: l.phase }, l.cases[d[1]]);
+    }
+    return d;
+  }
+
+  function renderHelp() {
+    const n = NODES[helpState.node];
+    const stepNo = n.phase ? STRIP_PHASES.findIndex((p) => p.id === n.phase) : -1;
+    const where = stepNo >= 0 ? `Schritt ${stepNo + 1} von 8: <b>${PHASE_BY_ID[n.phase].title}</b>` : 'Wo stehst du gerade?';
+    const nav = `<div class="help-nav">
+        ${helpState.history.length ? '<button class="btn small" data-hback>← Zurück</button>' : ''}
+        ${helpState.node !== 'start' ? '<button class="btn small" data-hstart>Von vorne</button>' : ''}
+      </div>`;
+    let body;
+    if (n.options) {
+      body = `<h2 class="help-q-title">Frage</h2><p class="help-q">${n.q}</p>
+        <div class="help-opts">${n.options.map(([label, next]) => `<button class="btn help-opt" data-hnext="${next}">${label}<span aria-hidden="true">›</span></button>`).join('')}</div>`;
+    } else {
+      const d = demoSpec(n.demo);
+      body = `<h2 class="help-q-title">${n.title}</h2>
+        <ol class="help-steps">${n.steps.map((s) => `<li>${s}</li>`).join('')}</ol>
+        ${d ? `<div class="case help-demo"><div class="mini"></div><h4>${d.title}</h4><div class="chips mini-chips"></div>
+          <div class="case-actions"><button class="btn small accent play">▶ Vorführen</button><button class="btn small icon reset" aria-label="Zurücksetzen">⟲</button></div></div>` : ''}
+        <div class="help-done">
+          <button class="btn primary" data-hnext="${ENTRY[n.phase] || 'start'}">✓ Gemacht – wie geht’s weiter?</button>
+        </div>`;
+    }
+    $('#helpCard').innerHTML = `<div class="help-where">${where}</div>${body}${nav}`;
+    const demoEl = $('#helpCard .help-demo');
+    if (demoEl) initDemo(demoEl, demoSpec(n.demo), demoSpec(n.demo).phase || n.phase);
+  }
+
+  $('#help').addEventListener('click', (e) => {
+    const next = e.target.closest('[data-hnext]');
+    if (next) return helpGo(next.dataset.hnext);
+    if (e.target.closest('[data-hback]')) {
+      helpState.node = helpState.history.pop() || 'start';
+      return renderHelp();
+    }
+    if (e.target.closest('[data-hstart]')) {
+      helpState.history = [];
+      helpState.node = 'start';
+      return renderHelp();
+    }
+    if (e.target.closest('[data-hinput]')) go('input');
+  });
 
   /* ---------- Zug-Erklärung beim Antippen eines Zugs ---------- */
   const sheet = document.createElement('div');

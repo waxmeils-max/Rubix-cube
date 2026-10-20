@@ -67,6 +67,7 @@
         <p class="tip"><b>Häufiger Fehler:</b> Ein weißes Kreuz, bei dem die Seitenfarben <b>nicht</b> passen, ist falsch – damit geht der nächste Schritt nicht. Darum der Umweg übers Gänseblümchen: Dort richtest du jede Kante einzeln an ihrer Mitte aus.</p>`,
       cases: [
         { title: 'Ausrichten und runterklappen', text: 'Die grüne Seite des Blütenblatts steht noch nicht über Grün. Erst <b>U\'</b> zum Ausrichten, dann <b>F2</b>.', base: 'daisy', setup: 'U', mask: 'daisy', demo: "U' F2" },
+        { title: 'Kreuz da, aber zwei Kanten vertauscht', text: 'Beide falschen Kanten mit <b>F2</b> und <b>B2</b> hochholen, oben mit <b>U2</b> tauschen, wieder runter. (Erst prüfen, ob schon <b>D</b>-Drehen reicht!)', base: 'solved', setup: 'F2 B2 U2 F2 B2', mask: 'daisy', demo: 'F2 B2 U2 F2 B2', view: 'low' },
         { title: 'Fertiges weißes Kreuz (von unten)', text: 'So sieht es richtig aus: Weiß unten als Kreuz, und jede Kante passt seitlich zu ihrer Mitte.', base: 'solved', setup: '', mask: 'daisy', demo: 'x2 x2', view: 'low' },
       ],
     },
@@ -165,6 +166,7 @@
         <div class="alg-box"><span>Algorithmus:</span> <code>U R U' L' U R' U' L</code></div>`,
       cases: [
         { title: 'Eine Ecke passt (vorne rechts)', text: 'Die Ecke vorne rechts ist richtig, die anderen drei wandern einmal im Kreis.', base: 'solved', setup: inv(ALG.niklas), mask: 'all', demo: ALG.niklas },
+        { title: 'Keine Ecke passt', text: 'Einmal von beliebiger Seite, dann ist eine richtig – die nach vorne rechts und nochmal.', base: 'solved', setup: `${inv(ALG.niklas)} y' ${inv(ALG.niklas)} y`, mask: 'all', demo: 'auto' },
       ],
     },
     {

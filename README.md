@@ -22,6 +22,7 @@ Die App ist für einen Bildschirm gebaut: Der Würfel ist immer sichtbar, darunt
 - **Erklär-Löser:** Würfel mischen oder den eigenen Würfel eingeben. Jeder Schritt wird mit Text erklärt. Der Stein, um den es gerade geht, leuchtet. Zug für Zug, schrittweise oder automatisch abspielen.
 - **Trainer:** Man übt einen einzelnen Schritt, alles davor ist schon gelöst. Mit „Tipp“ sieht man den nächsten Schritt. Wird dabei ein früherer Schritt kaputt gemacht, weist der Tipp darauf hin.
 - **Würfel eingeben:** Die Farben des echten Würfels im Netz abmalen. Die Eingabe wird geprüft (Farbanzahl, unmögliche Steine, nicht lösbare Lagen).
+- **Hilfe („Wo hängst du?“):** Ein Assistent fragt mit einfachen Fragen ab, wie der echte Würfel gerade aussieht, und führt zu genau dem passenden Fall: alle Fälle der acht Schritte, jeweils mit Zügen und Vorführung.
 - **Anleitung:** Alle Schritte mit Beispielwürfeln zum Vorführen, auch für Sonderfälle wie gekippte Kanten, verdrehte Ecken oder Steine am falschen Platz, plus eine Hilfe-Tabelle „Steine liegen komisch“.
 - **Notation:** Was R, U, F, R', U2, y … bedeuten, mit Animation.
 

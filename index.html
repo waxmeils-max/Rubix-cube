@@ -15,6 +15,7 @@
         <button class="nav-btn active" data-go="solve">Lösen</button>
         <button class="nav-btn" data-go="train">Üben</button>
         <button class="nav-btn" data-go="input">Eingeben</button>
+        <button class="nav-btn" data-go="help">Hilfe</button>
         <button class="nav-btn" data-go="learn">Lernen</button>
       </nav>
       <button class="icon-btn" id="btnMenu" aria-label="Optionen">⚙︎</button>
@@ -36,7 +37,7 @@
           <div id="dock-solve" class="dock-panel">
             <div id="solveStart" class="dock-card">
               <h2 class="dock-title">Würfel lösen lernen</h2>
-              <p class="dock-text">Halte deinen Würfel mit <b>Gelb oben</b> und <b>Grün vorne</b>. Gib ihn ein oder lass einen gemischten Würfel erzeugen – dann zeige ich dir jeden Zug.</p>
+              <p class="dock-text">Halte deinen Würfel mit <b>Gelb oben</b> und <b>Grün vorne</b>. Gib ihn ein oder lass einen gemischten Würfel erzeugen – dann zeige ich dir jeden Zug. Du hängst gerade an deinem echten Würfel? <button class="link" data-go="help">Zur Hilfe</button></p>
               <p class="scramble" id="scrambleText" hidden></p>
               <div class="big-actions">
                 <button class="btn primary big" id="btnSolve" hidden>Lösung starten ▶</button>
@@ -113,6 +114,15 @@
         </div>
       </section>
 
+      <!-- Hilfe-Assistent -->
+      <section class="learn" id="help" hidden>
+        <div class="learn-inner">
+          <h1 class="learn-title">Wo hängst du?</h1>
+          <p class="muted">Beantworte ein paar Fragen zu deinem echten Würfel – ich sage dir genau, was du drehen musst. Ganz sicher geht es mit <button class="link" data-hinput>Würfel eingeben</button>.</p>
+          <div class="help-card" id="helpCard"></div>
+        </div>
+      </section>
+
       <!-- Lernen -->
       <section class="learn" id="learn" hidden>
         <div class="learn-inner">
@@ -127,6 +137,7 @@
       <button class="nav-btn active" data-go="solve"><span class="ni">▶</span>Lösen</button>
       <button class="nav-btn" data-go="train"><span class="ni">🎯</span>Üben</button>
       <button class="nav-btn" data-go="input"><span class="ni">✏️</span>Eingeben</button>
+      <button class="nav-btn" data-go="help"><span class="ni">🧭</span>Hilfe</button>
       <button class="nav-btn" data-go="learn"><span class="ni">📖</span>Lernen</button>
     </nav>
   </div>
@@ -190,6 +201,7 @@
   <script src="js/solver.js"></script>
   <script src="js/view3d.js"></script>
   <script src="js/lessons.js"></script>
+  <script src="js/helper.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

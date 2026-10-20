@@ -401,3 +401,19 @@ table.trouble { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .nota .mini.cv-scene { width: 96px; height: 96px; flex: none; }
 .nota-txt { font-size: .85rem; display: flex; flex-direction: column; }
 .big-tok { font-family: var(--mono); font-size: 1.3rem; font-weight: 800; }
+
+/* Hilfe-Assistent */
+.help-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.help-where { font-size: .85rem; color: var(--muted); }
+.help-where b { color: var(--text); }
+.help-q-title { font-size: 1.15rem; }
+.help-q { font-size: 1rem; }
+.help-opts { display: flex; flex-direction: column; gap: 8px; }
+.help-opt { display: flex; justify-content: space-between; align-items: center; text-align: left; gap: 10px; }
+.help-opt span { color: var(--muted); font-size: 1.3rem; line-height: 1; }
+.help-steps { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; }
+.help-demo { align-self: stretch; max-width: 340px; }
+.help-done { display: flex; }
+.help-done .btn { flex: 1; }
+.help-nav { display: flex; gap: 8px; flex-wrap: wrap; }
+.nav-bottom .nav-btn { min-width: 0; }
