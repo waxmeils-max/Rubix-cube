@@ -142,6 +142,30 @@
     </nav>
   </div>
 
+  <!-- Film -->
+  <div class="film" id="film" hidden role="dialog" aria-modal="true" aria-labelledby="filmTitle">
+    <div class="film-top">
+      <span class="film-badge">🎬 Film</span>
+      <b id="filmTitle"></b>
+      <button class="sheet-close film-close" id="filmClose" aria-label="Film schließen">×</button>
+    </div>
+    <div class="film-stage">
+      <div id="filmCube"></div>
+      <div class="topview" id="filmTop" aria-label="Draufsicht"></div>
+    </div>
+    <div class="film-move" id="filmMove" aria-live="polite"></div>
+    <p class="film-cap" id="filmCap" aria-live="polite"></p>
+    <div class="film-ctrl">
+      <button class="btn" id="filmPlay">⏸ Pause</button>
+      <button class="btn" id="filmRestart">⟲ Von vorne</button>
+      <select id="filmSpeed" aria-label="Tempo">
+        <option value="1.5">Sehr langsam</option>
+        <option value="1" selected>Langsam</option>
+        <option value="0.6">Normal</option>
+      </select>
+    </div>
+  </div>
+
   <!-- Optionen -->
   <div class="sheet" id="optSheet" hidden>
     <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="optTitle">
@@ -202,6 +226,7 @@
   <script src="js/view3d.js"></script>
   <script src="js/lessons.js"></script>
   <script src="js/helper.js"></script>
+  <script src="js/films.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

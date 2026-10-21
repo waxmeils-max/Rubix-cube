@@ -650,6 +650,7 @@
             <div class="chips mini-chips"></div>
             <div class="case-actions"><button class="btn small accent play">▶ Vorführen</button><button class="btn small icon reset" aria-label="Zurücksetzen">⟲</button></div>
           </div>`).join('')}</div>` : ''}
+        ${Films.FILMS[l.id] ? `<button class="btn accent film-btn" data-film="${l.id}">🎬 Als Film ansehen</button>` : ''}
         ${l.phase ? `<button class="btn primary" data-train="${l.phase}">Diesen Schritt üben</button>` : ''}
       </details>`).join('');
     const nota = `
@@ -792,7 +793,8 @@
           <button class="btn primary" data-hnext="${ENTRY[n.phase] || 'start'}">✓ Gemacht – wie geht’s weiter?</button>
         </div>`;
     }
-    $('#helpCard').innerHTML = `<div class="help-where">${where}</div>${body}${nav}`;
+    const film = n.phase && Films.FILMS[n.phase] ? `<button class="btn accent film-btn" data-film="${n.phase}">🎬 Diesen Schritt als Film ansehen</button>` : '';
+    $('#helpCard').innerHTML = `<div class="help-where">${where}</div>${body}${film}${nav}`;
     const demoEl = $('#helpCard .help-demo');
     if (demoEl) initDemo(demoEl, demoSpec(n.demo), demoSpec(n.demo).phase || n.phase);
   }
@@ -811,6 +813,118 @@
     }
     if (e.target.closest('[data-hinput]')) go('input');
   });
+
+  /* ---------- Filme ---------- */
+  const { FILMS } = Films;
+  const filmView = new CubeView($('#filmCube'), { size: 50 });
+  let filmRun = 0;
+  let filmPaused = false;
+  let filmId = null;
+  const filmFactor = () => Number($('#filmSpeed').value);
+  const STOP = {};
+
+  new ResizeObserver(() => {
+    const st = $('#film .film-stage');
+    if (!st.clientWidth) return;
+    filmView.setSize(Math.max(24, Math.min(80, Math.floor(Math.min(st.clientWidth, st.clientHeight) / 5.6))));
+  }).observe($('#film .film-stage'));
+
+  async function filmWait(ms, my) {
+    let t = 0;
+    while (t < ms * filmFactor()) {
+      if (my !== filmRun) throw STOP;
+      await sleep(100);
+      if (!filmPaused) t += 100;
+    }
+    if (my !== filmRun) throw STOP;
+  }
+
+  function renderTopView() {
+    const fl = filmView.cube.facelets();
+    const cell = (f) => {
+      const ok = fl[f][1] === fl[f][4];
+      return `<div class="tv-edge c-${fl[f][1]} tv-${f}"><span class="tv-mark ${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'}</span></div><div class="tv-center c-${fl[f][4]} tv-c${f}"></div>`;
+    };
+    $('#filmTop').innerHTML = `<div class="tv-title">Draufsicht</div><div class="tv-grid"><div class="tv-y c-Y"></div>${['B', 'L', 'R', 'F'].map(cell).join('')}</div><div class="tv-legend">Kante oben · Mitte darunter</div>`;
+  }
+
+  function filmCaption(html) { $('#filmCap').innerHTML = html; }
+
+  async function playFilm(id) {
+    const f = FILMS[id];
+    const my = ++filmRun;
+    filmPaused = false;
+    $('#filmPlay').textContent = '⏸ Pause';
+    filmView.setCube(f.start());
+    filmView.rx = -42;
+    filmView.ry = -32;
+    filmView.applyView();
+    filmView.setFocus(null);
+    $('#filmMove').textContent = '';
+    $('#filmTop').hidden = !f.topview;
+    if (f.topview) renderTopView();
+    try {
+      for (const sc of f.scenes) {
+        if (sc.set) filmView.setCube(sc.set());
+        if (sc.say) filmCaption(typeof sc.say === 'function' ? sc.say(filmView.cube) : sc.say);
+        filmView.setFocus(sc.focus ? sc.focus(filmView.cube) : null);
+        if (f.topview) renderTopView();
+        if (sc.fast) {
+          for (const t of CubeLib.parseSeq(sc.fast)) {
+            $('#filmMove').innerHTML = `<span class="tok">${t}</span>`;
+            await filmView.animate(t, 420 * filmFactor());
+            if (my !== filmRun) throw STOP;
+          }
+          $('#filmMove').textContent = '';
+        }
+        if (sc.moves) {
+          const seq = CubeLib.parseSeq(sc.moves);
+          for (let i = 0; i < seq.length; i++) {
+            const t = seq[i];
+            const step = seq.length > 1 ? `<span class="fm-n">Zug ${i + 1} von ${seq.length}</span>` : '';
+            $('#filmMove').innerHTML = `${step}<span class="tok">${t}</span><span class="fm-d">${moveText(t)}</span>`;
+            await filmWait(1100, my);
+            await filmView.animate(t, 1000 * filmFactor());
+            if (f.topview) renderTopView();
+            await filmWait(500, my);
+          }
+          $('#filmMove').textContent = '';
+        }
+        if (sc.after) filmCaption(sc.after(filmView.cube));
+        if (sc.focus) filmView.setFocus(sc.focus(filmView.cube));
+        if (f.topview) renderTopView();
+        await filmWait(sc.wait || 0, my);
+      }
+      filmCaption('<b>Ende.</b> Tippe auf „Von vorne“, um den Film nochmal zu sehen.');
+      $('#film').dataset.done = '1';
+    } catch (e) {
+      if (e !== STOP) throw e;
+    }
+  }
+
+  function openFilm(id) {
+    filmId = id;
+    closeSheets();
+    $('#filmTitle').textContent = FILMS[id].title;
+    $('#film').hidden = false;
+    delete $('#film').dataset.done;
+    requestAnimationFrame(() => playFilm(id));
+  }
+  function closeFilm() {
+    filmRun++;
+    $('#film').hidden = true;
+  }
+  $('#filmClose').addEventListener('click', closeFilm);
+  $('#filmRestart').addEventListener('click', () => { delete $('#film').dataset.done; playFilm(filmId); });
+  $('#filmPlay').addEventListener('click', () => {
+    filmPaused = !filmPaused;
+    $('#filmPlay').textContent = filmPaused ? '▶ Weiter' : '⏸ Pause';
+  });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-film]');
+    if (b) openFilm(b.dataset.film);
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#film').hidden) closeFilm(); });
 
   /* ---------- Zug-Erklärung beim Antippen eines Zugs ---------- */
   const sheet = document.createElement('div');

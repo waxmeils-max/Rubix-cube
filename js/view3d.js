@@ -87,9 +87,29 @@
       this.render();
     }
 
+    /** Hebt ein Stück (Farbschlüssel) oder mehrere Stücke (Array) hervor. */
     setFocus(key) {
-      this.focus = key || null;
+      this.focus = key ? (Array.isArray(key) ? key : [key]) : null;
       this.render();
+    }
+
+    /** Dreht die Kamera weich zu einer Blickrichtung. */
+    animateView(rx, ry, ms = 600) {
+      const r0 = this.rx;
+      const y0 = this.ry;
+      return new Promise((resolve) => {
+        const t0 = performance.now();
+        const frame = (now) => {
+          const t = Math.min(1, (now - t0) / ms);
+          const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+          this.rx = r0 + (rx - r0) * e;
+          this.ry = y0 + (ry - y0) * e;
+          this.applyView();
+          if (t < 1) requestAnimationFrame(frame);
+          else resolve();
+        };
+        requestAnimationFrame(frame);
+      });
     }
 
     render() {
@@ -104,7 +124,7 @@
         const slot = this.slots.get(q.pos.map((n) => n + 0).join(','));
         if (!slot) continue;
         const key = q.st.map((s) => s.c).sort().join('');
-        if (fkey && key === fkey) slot.el.classList.add('cv-focus');
+        if (fkey && fkey.includes(key)) slot.el.classList.add('cv-focus');
         for (const s of q.st) {
           const f = vecFace(s.d);
           const show = !this.mask || this.mask(key, s.c);
@@ -169,5 +189,6 @@
     }
   }
 
+  CubeView.VIEWS = VIEWS;
   root.CubeView = CubeView;
 })(window);
