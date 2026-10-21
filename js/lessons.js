@@ -107,7 +107,7 @@
         </ol>
         <div class="alg-box"><span>Nach rechts:</span> <code>U R U' R' U' F' U F</code></div>
         <div class="alg-box"><span>Nach links:</span> <code>U' L' U L U F U' F'</code></div>
-        <p class="tip"><b>Keine passende Kante oben?</b> Dann steckt eine Kante schon unten in der mittleren Ebene – am falschen Platz oder <b>verdreht</b>. Halte sie vorne rechts und führe den Rechts-Algorithmus mit irgendeiner Kante aus. Dadurch kommt sie nach oben und du kannst sie richtig einsetzen.</p>`,
+        <p class="tip"><b>Keine passende Kante oben?</b> Dann steckt eine Kante schon unten in der mittleren Ebene – am falschen Platz oder <b>verdreht</b>. Achtung: Auch wenn <b>eine</b> Farbe der Kante schon zur Mitte passt, ist sie falsch, solange die andere nicht passt (z. B. Grün auf der blauen Seite). Halte sie vorne rechts und führe den Rechts-Algorithmus aus (oder vorne links mit dem Links-Algorithmus). Dadurch kommt sie nach oben und du kannst sie richtig einsetzen.</p>`,
       cases: [
         { title: 'Kante muss nach rechts', text: 'Grün steht über Grün, oben ist Orange – Orange ist rechts. Also Rechts-Algorithmus.', base: 'solved', setup: inv(ALG.right), mask: 'middle', demo: ALG.right },
         { title: 'Kante muss nach links', text: 'Oben ist Rot – Rot ist links. Also Links-Algorithmus.', base: 'solved', setup: inv(ALG.left), mask: 'middle', demo: ALG.left },

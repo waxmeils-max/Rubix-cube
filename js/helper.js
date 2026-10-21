@@ -171,7 +171,7 @@
     /* ---------- Zweite Ebene ---------- */
     middle: {
       phase: 'middle',
-      q: 'Ist die <b>mittlere Ebene</b> fertig – passt auf jeder Seite die mittlere Reihe zur Mitte?',
+      q: 'Ist die <b>mittlere Ebene</b> fertig – passt auf <b>jeder</b> Seite die ganze mittlere Reihe zur Mitte? (Eine Kante sitzt nur richtig, wenn <b>beide</b> Farben passen.)',
       options: [
         ['Ja', 'ycross'],
         ['Nein', 'midTop'],
@@ -183,6 +183,7 @@
       options: [
         ['Ja', 'midDir'],
         ['Nein, alle oberen Kanten haben Gelb', 'midStuck'],
+        ['Ja, aber erst steckt eine falsche Kante in der Mitte', 'midStuck'],
       ],
     },
     midDir: {
@@ -199,9 +200,8 @@
       phase: 'middle',
       title: 'Kante steckt falsch in der Mitte',
       steps: [
-        'Eine Kante sitzt in der mittleren Ebene am <b>falschen Platz</b> oder <b>verdreht</b> (Farben vertauscht).',
-        'Halte sie <b>vorne rechts</b>.',
-        'Einmal <b>U R U\' R\' U\' F\' U F</b> – egal, was oben liegt. Jetzt ist sie oben.',
+        'Eine Kante sitzt in der mittleren Ebene am <b>falschen Platz</b> oder <b>verdreht</b> (Farben vertauscht). Das gilt auch, wenn <b>eine</b> ihrer Farben schon zur Mitte passt, die andere aber nicht.',
+        'Steckt sie <b>vorne rechts</b>: einmal <b>U R U\' R\' U\' F\' U F</b>. Steckt sie <b>vorne links</b>: einmal <b>U\' L\' U L U F U\' F\'</b> – egal, was oben liegt. Jetzt ist sie oben.',
         'Dann normal einsetzen: umgedrehtes T bilden, rechts oder links einsetzen.',
       ],
       demo: ['middle', 2],
