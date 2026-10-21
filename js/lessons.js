@@ -142,14 +142,14 @@
       html: `
         <p><b>Ziel:</b> Die Seitenfarben der gelben Kanten sollen zu ihren Mitten passen.</p>
         <ol>
-          <li>Drehe die obere Ebene, bis mindestens <b>zwei</b> Kanten passen.</li>
+          <li>Drehe die obere Ebene, bis mindestens <b>zwei</b> Kanten passen. „Passen“ heißt: Die Seitenfarbe der gelben Kante ist gleich der Mitte darunter.</li>
           <li>Liegen die zwei passenden <b>nebeneinander</b>: Würfel so halten, dass sie <b>hinten und rechts</b> sind, dann Algorithmus.</li>
-          <li>Liegen sie <b>gegenüber</b>: Algorithmus einmal von irgendwo, dann sind zwei nebeneinander → wie oben.</li>
+          <li>Liegen sie <b>gegenüber</b> (z. B. links und rechts passen, vorne und hinten nicht): Algorithmus <b>einmal</b> ausführen, egal wie du den Würfel hältst. Danach die obere Ebene drehen, bis zwei <b>nebeneinander</b> passen → weiter wie in Punkt 2.</li>
         </ol>
         <div class="alg-box"><span>Algorithmus:</span> <code>R U R' U R U2 R' U</code></div>`,
       cases: [
         { title: 'Zwei passen nebeneinander', text: 'Hinten (blau) und rechts (orange) passen, vorne und links sind vertauscht.', base: 'solved', setup: inv(ALG.sune), mask: 'all', demo: ALG.sune },
-        { title: 'Zwei passen gegenüber', text: 'Erst einmal den Algorithmus, dann liegt der Fall „nebeneinander“ vor.', base: 'solved', setup: `${inv(ALG.sune)} U' ${inv(ALG.sune)}`, mask: 'all', demo: 'auto' },
+        { title: 'Zwei passen gegenüber', text: 'Links (rot) und rechts (orange) passen, vorne und hinten nicht – die zwei passenden liegen sich <b>gegenüber</b>. So geht’s: <b>1.</b> Einmal R U R\' U R U2 R\' U, egal wie du den Würfel hältst. <b>2.</b> Obere Ebene drehen, bis zwei <b>nebeneinander</b> passen. <b>3.</b> Die beiden nach hinten und rechts nehmen und den Algorithmus nochmal.', base: 'solved', setup: "U' R U2 R' U' R U' R' U y U' R U2 R' U' R U' R' y'", mask: 'all', demo: 'auto' },
       ],
     },
     {
