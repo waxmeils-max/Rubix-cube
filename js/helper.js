@@ -242,7 +242,7 @@
         ['Alle vier', 'ycorners'],
         ['Zwei nebeneinander', 'yeAdj'],
         ['Zwei gegenüber', 'yeOpp'],
-        ['Nur eine oder keine', 'yeLess'],
+        ['Nur eine oder keine – egal wie ich drehe', 'yeLess'],
       ],
     },
     yeAdj: { phase: 'yedges', title: 'Zwei passende Kanten nebeneinander', steps: ['Halte den Würfel so, dass die zwei passenden Kanten <b>hinten und rechts</b> sind.', '<b>R U R\' U R U2 R\' U</b>.', 'Danach passen alle vier (eventuell noch oben ausrichten).'], demo: ['yedges', 0] },

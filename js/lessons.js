@@ -142,7 +142,7 @@
       html: `
         <p><b>Ziel:</b> Die Seitenfarben der gelben Kanten sollen zu ihren Mitten passen.</p>
         <ol>
-          <li>Drehe die obere Ebene, bis mindestens <b>zwei</b> Kanten passen. „Passen“ heißt: Die Seitenfarbe der gelben Kante ist gleich der Mitte darunter.</li>
+          <li>Drehe die obere Ebene, bis mindestens <b>zwei</b> Kanten passen. „Passen“ heißt: Die Seitenfarbe der gelben Kante ist gleich der Mitte darunter. <b>Passt nur eine oder keine?</b> Dann einfach weiterdrehen – bei einer der vier Stellungen passen immer mindestens zwei.</li>
           <li>Liegen die zwei passenden <b>nebeneinander</b>: Würfel so halten, dass sie <b>hinten und rechts</b> sind, dann Algorithmus.</li>
           <li>Liegen sie <b>gegenüber</b> (z. B. links und rechts passen, vorne und hinten nicht): Algorithmus <b>einmal</b> ausführen, egal wie du den Würfel hältst. Danach die obere Ebene drehen, bis zwei <b>nebeneinander</b> passen → weiter wie in Punkt 2.</li>
         </ol>
