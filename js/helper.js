@@ -277,7 +277,7 @@
       title: 'Gelbe Ecken drehen',
       steps: [
         'Halte eine verdrehte Ecke <b>vorne rechts oben</b>. Ab jetzt den Würfel <b>nicht mehr drehen</b>!',
-        '<b>R\' D\' R D</b> wiederholen, bis Gelb dieser Ecke oben ist (2× oder 4×).',
+        '<b>R\' D\' R D</b> wiederholen, bis Gelb dieser Ecke oben ist: Zeigt Gelb <b>nach rechts → 2×</b>, zeigt Gelb <b>nach vorne → 4×</b>.',
         'Nur die obere Ebene <b>U</b> drehen, bis die nächste verdrehte Ecke vorne rechts oben ist. Wieder R\' D\' R D …',
         'Unten sieht es zwischendurch kaputt aus – <b>weitermachen</b>, nach der letzten Ecke ist alles heil.',
       ],

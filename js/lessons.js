@@ -177,7 +177,7 @@
         <p><b>Ziel:</b> Alle Ecken zeigen Gelb nach oben – dann ist der Würfel gelöst.</p>
         <ol>
           <li>Halte eine verdrehte Ecke <b>vorne rechts oben</b>. Ab jetzt den ganzen Würfel <b>nicht mehr drehen!</b></li>
-          <li>Wiederhole <b>R' D' R D</b>, bis Gelb dieser Ecke oben ist (2× oder 4×).</li>
+          <li>Wiederhole <b>R' D' R D</b>, bis Gelb dieser Ecke oben ist. Zeigt Gelb <b>nach rechts: 2×</b>. Zeigt Gelb <b>nach vorne: 4×</b>.</li>
           <li>Drehe nur die <b>obere Ebene (U)</b>, bis die nächste verdrehte Ecke vorne rechts ist. Wieder R' D' R D …</li>
           <li>Am Ende die obere Ebene ausrichten – fertig!</li>
         </ol>
